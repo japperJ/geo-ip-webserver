@@ -1,4 +1,16 @@
-import { isValid, parse, parseCIDR } from 'ipaddr.js';
+import * as ipaddr from 'ipaddr.js';
+
+/**
+ * Validate if a string is a valid IP address
+ */
+function isValidIP(ip: string): boolean {
+  try {
+    ipaddr.parse(ip);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Check if IP matches any CIDR in list
@@ -7,17 +19,17 @@ import { isValid, parse, parseCIDR } from 'ipaddr.js';
  * @returns true if IP matches any entry, false otherwise
  */
 export function matchCIDR(ip: string, cidrList: string[]): boolean {
-  if (!isValid(ip)) {
+  if (!isValidIP(ip)) {
     return false;
   }
 
-  const parsedIP = parse(ip);
+  const parsedIP = ipaddr.parse(ip);
 
   for (const cidr of cidrList) {
     try {
       // Single IP (no CIDR notation)
       if (!cidr.includes('/')) {
-        const singleIP = parse(cidr);
+        const singleIP = ipaddr.parse(cidr);
         if (parsedIP.toString() === singleIP.toString()) {
           return true;
         }
@@ -25,7 +37,7 @@ export function matchCIDR(ip: string, cidrList: string[]): boolean {
       }
 
       // CIDR range
-      const [network, prefixLength] = parseCIDR(cidr);
+      const [network, prefixLength] = ipaddr.parseCIDR(cidr);
       if (parsedIP.match(network, prefixLength)) {
         return true;
       }

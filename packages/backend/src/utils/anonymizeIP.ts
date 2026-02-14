@@ -1,4 +1,4 @@
-import { parse } from 'ipaddr.js';
+import * as ipaddr from 'ipaddr.js';
 
 /**
  * Anonymize IP address for GDPR compliance
@@ -11,7 +11,7 @@ import { parse } from 'ipaddr.js';
  */
 export function anonymizeIP(ip: string): string {
   try {
-    const parsed = parse(ip);
+    const parsed = ipaddr.parse(ip);
 
     if (parsed.kind() === 'ipv4') {
       // IPv4: Zero out last octet

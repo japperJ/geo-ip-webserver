@@ -1,5 +1,17 @@
 import { FastifyRequest } from 'fastify';
-import { isValid } from 'ipaddr.js';
+import * as ipaddr from 'ipaddr.js';
+
+/**
+ * Validate if a string is a valid IP address
+ */
+function isValidIP(ip: string): boolean {
+  try {
+    ipaddr.parse(ip);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Extract real client IP from request
@@ -19,20 +31,20 @@ export function getClientIP(request: FastifyRequest): string | null {
       : xForwardedFor.split(',');
     
     const clientIP = ips[0].trim();
-    if (isValid(clientIP)) {
+    if (isValidIP(clientIP)) {
       return clientIP;
     }
   }
 
   // 2. Check X-Real-IP (set by Nginx proxy_pass)
   const xRealIP = request.headers['x-real-ip'];
-  if (typeof xRealIP === 'string' && isValid(xRealIP)) {
+  if (typeof xRealIP === 'string' && isValidIP(xRealIP)) {
     return xRealIP;
   }
 
   // 3. Fallback to socket remote address
   const socketIP = request.socket.remoteAddress;
-  if (socketIP && isValid(socketIP)) {
+  if (socketIP && isValidIP(socketIP)) {
     return socketIP;
   }
 
