@@ -14,7 +14,7 @@
 
 - **In Scope:** MVP-001 through MVP-023 as defined in `.planning/ROADMAP.md` Phase 1.
 - **Out of Scope:** Phase 2+ GPS features, multi-site/RBAC, artifacts, production hardening.
-- **Success Criteria:** SC-1.1 to SC-1.10 in `.planning/ROADMAP.md` Phase 1.
+- **Success Criteria:** SC-1.1 to SC-1.10 in `.planning/ROADMAP.md` Phase 1 (including CI coverage gate for services/utils).
 
 ---
 
@@ -31,7 +31,7 @@
 | SC-1.7 Admin UI displays logs with pagination | REQ-F-020, REQ-F-030 | MVP-012, MVP-019, MVP-020 | API/UI tests for pagination + filters (Tasks 13, 20) |
 | SC-1.8 SQL queries parameterized | REQ-NF-007 | MVP-001, MVP-003, MVP-004 | Service tests + code review checklist (Task 5) |
 | SC-1.9 IP anonymized in logs | REQ-F-028 | MVP-011, MVP-010 | Unit tests for anonymizeIP (Task 12) |
-| SC-1.10 Unit coverage >80% services/utils | REQ-F-028, REQ-NF-007 | MVP-004, MVP-005, MVP-006, MVP-007, MVP-011, MVP-012 | Coverage gating in CI (Task 5) |
+| SC-1.10 Unit coverage >80% services/utils | REQ-F-028, REQ-NF-007 | MVP-004, MVP-005, MVP-006, MVP-007, MVP-011, MVP-012 | Coverage gating in CI (Task 5, enforced) |
 
 ---
 
@@ -102,7 +102,7 @@
 1. Add tests for create, list, getById, update, delete.
 2. Add tests for SQL injection attempts (ensure parameterization).
 3. Add tests for list filters (access_mode), search (name/hostname), and pagination totals.
-4. Enforce coverage gating for services/utils (>=80%) in unit test config.
+4. Enforce coverage gating for services/utils (>=80%) in unit test config and fail CI when below.
 5. Run unit test suite; confirm >80% coverage for service layer.
 
 ### Task 6: MVP-005 MaxMind GeoIP service
@@ -365,7 +365,7 @@
 ## Plan Notes
 
 - Follow precedence order: denylist → allowlist → country blocking → VPN detection.
-- Default `block_vpn_proxy` to true when null/undefined. **Policy deviation:** requirement REQ-F-010 specifies default false; keep true per user choice and document as intentional deviation.
+- Default `block_vpn_proxy` to true when null/undefined. **Approved deviation:** documented in REQ-F-010 requirements.
 - Fail fast on missing MaxMind databases in Phase 1 unless explicitly documented as dev-only optional.
 - Trust proxy only in known reverse-proxy deployments.
 - Ensure AccessLogService tests are deterministic (avoid async timing flakiness).

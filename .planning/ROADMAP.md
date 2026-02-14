@@ -102,7 +102,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
     ip_denylist INET[],
     country_allowlist VARCHAR(2)[],
     country_denylist VARCHAR(2)[],
-    block_vpn_proxy BOOLEAN DEFAULT false,
+    block_vpn_proxy BOOLEAN DEFAULT true,
     geofence_type VARCHAR(20),
     geofence_polygon GEOGRAPHY(POLYGON, 4326),
     geofence_center GEOGRAPHY(POINT, 4326),
@@ -238,6 +238,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Test CRUD operations
   - Test validation (invalid hostname, invalid IP, etc.)
   - Test SQL injection attempts (parameterized queries)
+  - Configure unit test coverage thresholds (>=80%) and fail CI when below
 
 #### Week 2: IP Access Control Middleware
 - [ ] **MVP-005:** Create MaxMind GeoIP service
@@ -360,11 +361,12 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 ✅ **SC-1.7:** Admin UI displays access logs with pagination  
 ✅ **SC-1.8:** All SQL queries use parameterized queries (verified via code review)  
 ✅ **SC-1.9:** IP addresses in logs are anonymized (last octet removed)  
-✅ **SC-1.10:** Unit test coverage > 80% for services and utilities  
+✅ **SC-1.10:** Unit test coverage > 80% for services and utilities, enforced by CI gate  
 
 ### Testing Requirements
 
 - **Unit Tests:** Site service, GeoIP service, IP anonymization, CIDR matching
+- **Coverage Gate:** CI fails if services/utils coverage drops below 80%
 - **Integration Tests:** API endpoints, middleware pipeline
 - **E2E Tests:** Full flow from UI to database
 - **Security Tests:** SQL injection attempts (parameterized queries), XSS in admin UI
@@ -395,7 +397,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 3. **GPS Accuracy Handling:** Buffering, rejection, multiple attempts
 4. **GPS-IP Cross-Validation:** Detect spoofing (max 500km distance)
 5. **Map UI:** Leaflet map with polygon/circle drawing (Leaflet Draw)
-6. **Access Modes:** `ip_only`, `geo_only`, `both`, `disabled`
+6. **Access Modes:** `ip_only`, `geo_only`, `ip_and_geo`, `disabled`
 
 ### Tasks
 
@@ -419,7 +421,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 - [ ] **GEO-004:** Create GPS access control middleware
   - `middleware/gpsAccessControl.ts`
   - Extract GPS coordinates from request body (POST with lat/lng)
-  - Check if GPS provided (required for `geo_only` and `both` modes)
+  - Check if GPS provided (required for `geo_only` and `ip_and_geo` modes)
   - PostGIS ST_Within query with accuracy buffering
   - Return 403 with reason if outside geofence
   
@@ -492,7 +494,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Auto-fix winding order (Turf.js rewind)
   
 - [ ] **GEO-018:** Add access mode selector to Site Editor
-  - Dropdown: `disabled`, `ip_only`, `geo_only`, `both`
+  - Dropdown: `disabled`, `ip_only`, `geo_only`, `ip_and_geo`
   - Show/hide IP and GPS sections based on mode
   - Update site on change
 
@@ -537,7 +539,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 - [x] GPS-IP cross-validation (anti-spoofing)
 - [x] Admin UI map for drawing geofence polygons/circles
 - [x] Browser geolocation integration with consent
-- [x] Access modes: `ip_only`, `geo_only`, `both`, `disabled`
+- [x] Access modes: `ip_only`, `geo_only`, `ip_and_geo`, `disabled`
 - [x] GPS accuracy report based on real-world testing
 
 ### Success Criteria
@@ -549,7 +551,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 ✅ **SC-2.5:** User denies GPS permission → Clear error message with instructions  
 ✅ **SC-2.6:** Admin can draw polygon on map and save geofence  
 ✅ **SC-2.7:** PostGIS ST_Within query executes in <1ms (verified via EXPLAIN ANALYZE)  
-✅ **SC-2.8:** Access mode `both` requires IP AND GPS to pass  
+✅ **SC-2.8:** Access mode `ip_and_geo` requires IP AND GPS to pass  
 ✅ **SC-2.9:** Access mode `geo_only` skips IP checks  
 ✅ **SC-2.10:** GPS coordinates logged in access_logs with accuracy  
 

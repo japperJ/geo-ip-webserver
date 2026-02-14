@@ -37,6 +37,7 @@ This document defines the complete set of functional and non-functional requirem
    - [Privacy & GDPR Compliance](#privacy--gdpr-compliance)
    - [Scalability](#scalability)
    - [Observability](#observability)
+   - [Quality & Testing](#quality--testing)
    - [Reliability](#reliability)
 3. [Traceability Matrix](#traceability-matrix)
 
@@ -222,7 +223,7 @@ This document defines the complete set of functional and non-functional requirem
 **Description:** Sites must support optional blocking of VPNs and proxies using MaxMind Anonymous IP database.
 
 **Acceptance Criteria:**
-1. Site has `block_vpn_proxy` boolean field (default: false)
+1. Site has `block_vpn_proxy` boolean field (default: true)
 2. If enabled, request IP checked against MaxMind Anonymous IP database
 3. If IP is classified as VPN, proxy, hosting provider, or Tor exit node, request is denied
 4. Detection completes in <1ms (local MMDB database)
@@ -234,6 +235,8 @@ This document defines the complete set of functional and non-functional requirem
 **Related Tasks:** MVP-005, MVP-007, MVP-009, DEV-009  
 **Related Risks:** RISK-001 (VPN bypass)  
 **Reference:** [ROADMAP.md:295-327], [PITFALLS.md:265-362]
+
+**Approved Deviation:** Default for `block_vpn_proxy` is set to `true` (instead of `false`) to align with Phase 1 plan notes and security posture. Documented and approved in planning.
 
 ---
 
@@ -1169,9 +1172,28 @@ This document defines the complete set of functional and non-functional requirem
 
 ---
 
+### Quality & Testing
+
+#### REQ-NF-025: Test Coverage Gate (Production Readiness)
+**Description:** CI must enforce a minimum unit test coverage threshold for services and utilities before production readiness is declared.
+
+**Acceptance Criteria:**
+1. CI fails when services/utils unit test coverage is below 80%
+2. Coverage threshold configured in test runner and surfaced in CI logs
+3. Coverage report stored as a CI artifact for review
+4. Coverage gate maps to Phase 1 Success Criterion SC-1.10
+
+**Priority:** Must-have (M)  
+**Phase:** Phase 1 (MVP)  
+**Related Tasks:** MVP-004, MVP-021, DEV-008  
+**Related Risks:** RISK-011 (Insufficient test coverage)  
+**Reference:** [ROADMAP.md:352-372]
+
+---
+
 ### Reliability
 
-#### REQ-NF-025: Healthcheck Endpoint
+#### REQ-NF-026: Healthcheck Endpoint
 **Description:** System must expose healthcheck endpoint for load balancer and monitoring.
 
 **Acceptance Criteria:**
@@ -1192,7 +1214,7 @@ This document defines the complete set of functional and non-functional requirem
 
 ---
 
-#### REQ-NF-026: Graceful Shutdown
+#### REQ-NF-027: Graceful Shutdown
 **Description:** System must handle SIGTERM signal and gracefully shut down (drain connections, complete in-flight requests).
 
 **Acceptance Criteria:**
@@ -1213,7 +1235,7 @@ This document defines the complete set of functional and non-functional requirem
 
 ---
 
-#### REQ-NF-027: Database Backups
+#### REQ-NF-028: Database Backups
 **Description:** Database must be backed up daily with point-in-time recovery capability.
 
 **Acceptance Criteria:**
@@ -1231,7 +1253,7 @@ This document defines the complete set of functional and non-functional requirem
 
 ---
 
-#### REQ-NF-028: Disaster Recovery Plan
+#### REQ-NF-029: Disaster Recovery Plan
 **Description:** Documented disaster recovery plan with RTO (Recovery Time Objective) and RPO (Recovery Point Objective).
 
 **Acceptance Criteria:**
@@ -1323,24 +1345,25 @@ This matrix maps requirements to roadmap phases and tasks for full traceability.
 | REQ-NF-022 | Logging | M | Phase 5 | MON-004, MON-005 |
 | REQ-NF-023 | Error Tracking | S | Phase 5 | MON-006, MON-007, MON-008 |
 | REQ-NF-024 | Alerting | M | Phase 5 | MON-001, MON-002, MON-003 |
-| REQ-NF-025 | Healthcheck Endpoint | M | Phase 5 | SEC-008, SEC-009, SEC-010 |
-| REQ-NF-026 | Graceful Shutdown | M | Phase 5 | SEC-010, SEC-011 |
-| REQ-NF-027 | Database Backups | M | Phase 5 | OPS-003, OPS-004, OPS-005 |
-| REQ-NF-028 | Disaster Recovery Plan | S | Phase 5 | OPS-006, OPS-007 |
+| REQ-NF-025 | Test Coverage Gate (Production Readiness) | M | Phase 1 | MVP-004, MVP-021, DEV-008 |
+| REQ-NF-026 | Healthcheck Endpoint | M | Phase 5 | SEC-008, SEC-009, SEC-010 |
+| REQ-NF-027 | Graceful Shutdown | M | Phase 5 | SEC-010, SEC-011 |
+| REQ-NF-028 | Database Backups | M | Phase 5 | OPS-003, OPS-004, OPS-005 |
+| REQ-NF-029 | Disaster Recovery Plan | S | Phase 5 | OPS-006, OPS-007 |
 
 ### Requirements by Priority
 
-**Must-Have (M):** 51 requirements  
+**Must-Have (M):** 52 requirements  
 **Should-Have (S):** 8 requirements  
 **Nice-to-Have (N):** 1 requirement  
-**Total:** 60 requirements
+**Total:** 61 requirements
 
 ### Requirements by Phase
 
 | Phase | Requirements Count | Must-Have | Should-Have | Nice-to-Have |
 |---|---|---|---|---|
 | Phase 0 | 2 | 2 | 0 | 0 |
-| Phase 1 | 16 | 16 | 0 | 0 |
+| Phase 1 | 17 | 17 | 0 | 0 |
 | Phase 2 | 8 | 7 | 1 | 0 |
 | Phase 3 | 9 | 9 | 0 | 0 |
 | Phase 4 | 14 | 11 | 2 | 1 |
@@ -1377,12 +1400,13 @@ This matrix maps requirements to roadmap phases and tasks for full traceability.
 | REQ-NF-015 | RISK-006 | GDPR non-compliance |
 | REQ-NF-016 | RISK-006 | GDPR non-compliance |
 | REQ-NF-017 | RISK-006 | GDPR non-compliance |
-| REQ-NF-027 | RISK-012 | Data loss due to no backups |
-| REQ-NF-028 | RISK-012 | Data loss |
+| REQ-NF-025 | RISK-011 | Insufficient test coverage |
+| REQ-NF-028 | RISK-012 | Data loss due to no backups |
+| REQ-NF-029 | RISK-012 | Data loss |
 
 ---
 
 **Document Status:** Complete  
-**Total Requirements:** 60 (33 Functional, 27 Non-Functional)  
+**Total Requirements:** 61 (33 Functional, 28 Non-Functional)  
 **Next Review Date:** Before each phase kickoff  
 **Change Control:** All requirement changes must be approved and documented in STATE.md change log
