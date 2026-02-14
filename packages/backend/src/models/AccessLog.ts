@@ -28,4 +28,7 @@ export interface CreateAccessLogInput {
   ip_city?: string;
   ip_lat?: number;
   ip_lng?: number;
+  gps_lat?: number;
+  gps_lng?: number;
+  gps_accuracy?: number;
 }

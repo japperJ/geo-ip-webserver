@@ -18,18 +18,23 @@ import {
 import { siteApi, CreateSiteInput, UpdateSiteInput } from '@/lib/api';
 import { validateIPList, ipArrayToText, ipTextToArray } from '@/lib/ipValidation';
 import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
+import { GeofenceMap } from '@/components/GeofenceMap';
 
 interface FormData {
   slug: string;
   name: string;
   hostname: string;
-  access_mode: 'open' | 'ip_only' | 'vpn_blocked';
+  access_mode: 'disabled' | 'ip_only' | 'geo_only' | 'ip_and_geo';
   ip_allowlist_text: string;
   ip_denylist_text: string;
   country_allowlist_text: string;
   country_denylist_text: string;
   vpn_detection_enabled: boolean;
   is_active: boolean;
+  geofence_type?: 'polygon' | 'radius' | null;
+  geofence_polygon?: GeoJSON.Polygon | null;
+  geofence_center?: GeoJSON.Point | null;
+  geofence_radius_km?: number | null;
 }
 
 export function SiteEditorPage() {
@@ -40,19 +45,29 @@ export function SiteEditorPage() {
 
   const [ipAllowlistErrors, setIpAllowlistErrors] = useState<Array<{ line: number; value: string; error: string }>>([]);
   const [ipDenylistErrors, setIpDenylistErrors] = useState<Array<{ line: number; value: string; error: string }>>([]);
+  const [geofence, setGeofence] = useState<{
+    type: 'polygon' | 'radius';
+    polygon?: GeoJSON.Polygon;
+    center?: GeoJSON.Point;
+    radius_km?: number;
+  } | null>(null);
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     defaultValues: {
       slug: '',
       name: '',
       hostname: '',
-      access_mode: 'open',
+      access_mode: 'disabled',
       ip_allowlist_text: '',
       ip_denylist_text: '',
       country_allowlist_text: '',
       country_denylist_text: '',
       vpn_detection_enabled: false,
       is_active: true,
+      geofence_type: null,
+      geofence_polygon: null,
+      geofence_center: null,
+      geofence_radius_km: null,
     },
   });
 
@@ -76,6 +91,16 @@ export function SiteEditorPage() {
       setValue('country_denylist_text', site.country_denylist.join('\n'));
       setValue('vpn_detection_enabled', site.vpn_detection_enabled);
       setValue('is_active', site.is_active);
+      
+      // Set geofence data
+      if (site.geofence_type) {
+        setGeofence({
+          type: site.geofence_type,
+          polygon: site.geofence_polygon,
+          center: site.geofence_center,
+          radius_km: site.geofence_radius_km,
+        });
+      }
     }
   }, [site, setValue]);
 
@@ -139,6 +164,10 @@ export function SiteEditorPage() {
         .filter((s) => s !== ''),
       vpn_detection_enabled: data.vpn_detection_enabled,
       is_active: data.is_active,
+      geofence_type: geofence?.type || null,
+      geofence_polygon: geofence?.polygon || null,
+      geofence_center: geofence?.center || null,
+      geofence_radius_km: geofence?.radius_km || null,
     };
 
     if (isEditMode) {
@@ -237,9 +266,10 @@ export function SiteEditorPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="open">Open (No restrictions)</SelectItem>
-                        <SelectItem value="ip_only">IP Only (IP-based access control)</SelectItem>
-                        <SelectItem value="vpn_blocked">VPN Blocked (Block VPN users)</SelectItem>
+                        <SelectItem value="disabled">Disabled (No restrictions)</SelectItem>
+                        <SelectItem value="ip_only">IP Only</SelectItem>
+                        <SelectItem value="geo_only">GPS Only</SelectItem>
+                        <SelectItem value="ip_and_geo">IP + GPS</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -383,6 +413,32 @@ export function SiteEditorPage() {
             />
           </CardContent>
         </Card>
+
+        {/* GPS Geofencing */}
+        {(watch('access_mode') === 'geo_only' || watch('access_mode') === 'ip_and_geo') && (
+          <Card>
+            <CardHeader>
+              <CardTitle>GPS Geofencing</CardTitle>
+              <CardDescription>
+                Draw a polygon or circle on the map to define the allowed area.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GeofenceMap
+                geofence={geofence}
+                onGeofenceChange={setGeofence}
+              />
+              {geofence && (
+                <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500 rounded-md">
+                  <p className="text-sm text-blue-400">
+                    <strong>Type:</strong> {geofence.type === 'polygon' ? 'Polygon' : 'Radius'}{' '}
+                    {geofence.radius_km && `(${geofence.radius_km.toFixed(2)} km)`}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Submit */}
         <div className="flex gap-4">

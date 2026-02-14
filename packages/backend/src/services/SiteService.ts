@@ -19,9 +19,18 @@ export class SiteService {
         ip_denylist,
         country_allowlist,
         country_denylist,
-        block_vpn_proxy
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *
+        block_vpn_proxy,
+        geofence_type,
+        geofence_polygon,
+        geofence_center,
+        geofence_radius_km
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
+        CASE WHEN $11 IS NOT NULL THEN ST_GeomFromGeoJSON($11)::geography ELSE NULL END,
+        CASE WHEN $12 IS NOT NULL THEN ST_GeomFromGeoJSON($12)::geography ELSE NULL END,
+        $13)
+      RETURNING *,
+        CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,
+        CASE WHEN geofence_center IS NOT NULL THEN ST_AsGeoJSON(geofence_center)::json ELSE NULL END as geofence_center_json
     `;
 
     const values = [
@@ -34,6 +43,10 @@ export class SiteService {
       input.country_allowlist || null,
       input.country_denylist || null,
       input.block_vpn_proxy ?? false,
+      input.geofence_type || null,
+      input.geofence_polygon ? JSON.stringify(input.geofence_polygon) : null,
+      input.geofence_center ? JSON.stringify(input.geofence_center) : null,
+      input.geofence_radius_km || null,
     ];
 
     const result = await this.db.query(query, values);
@@ -44,7 +57,13 @@ export class SiteService {
    * Get site by ID
    */
   async getById(id: string): Promise<Site | null> {
-    const query = 'SELECT * FROM sites WHERE id = $1 AND deleted_at IS NULL';
+    const query = `
+      SELECT *,
+        CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,
+        CASE WHEN geofence_center IS NOT NULL THEN ST_AsGeoJSON(geofence_center)::json ELSE NULL END as geofence_center_json
+      FROM sites 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
     const result = await this.db.query(query, [id]);
     return result.rows[0] ? this.mapRow(result.rows[0]) : null;
   }
@@ -53,7 +72,13 @@ export class SiteService {
    * Get site by hostname
    */
   async getByHostname(hostname: string): Promise<Site | null> {
-    const query = 'SELECT * FROM sites WHERE hostname = $1 AND deleted_at IS NULL';
+    const query = `
+      SELECT *,
+        CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,
+        CASE WHEN geofence_center IS NOT NULL THEN ST_AsGeoJSON(geofence_center)::json ELSE NULL END as geofence_center_json
+      FROM sites 
+      WHERE hostname = $1 AND deleted_at IS NULL
+    `;
     const result = await this.db.query(query, [hostname]);
     return result.rows[0] ? this.mapRow(result.rows[0]) : null;
   }
@@ -82,7 +107,10 @@ export class SiteService {
     // Get paginated results
     params.push(limit, offset);
     const listQuery = `
-      SELECT * FROM sites 
+      SELECT *,
+        CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,
+        CASE WHEN geofence_center IS NOT NULL THEN ST_AsGeoJSON(geofence_center)::json ELSE NULL END as geofence_center_json
+      FROM sites 
       ${whereClause}
       ORDER BY created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -139,6 +167,24 @@ export class SiteService {
       fields.push(`enabled = $${paramIndex++}`);
       values.push(input.enabled);
     }
+    if (input.geofence_type !== undefined) {
+      fields.push(`geofence_type = $${paramIndex++}`);
+      values.push(input.geofence_type);
+    }
+    if (input.geofence_polygon !== undefined) {
+      fields.push(`geofence_polygon = CASE WHEN $${paramIndex} IS NOT NULL THEN ST_GeomFromGeoJSON($${paramIndex})::geography ELSE NULL END`);
+      values.push(input.geofence_polygon ? JSON.stringify(input.geofence_polygon) : null);
+      paramIndex++;
+    }
+    if (input.geofence_center !== undefined) {
+      fields.push(`geofence_center = CASE WHEN $${paramIndex} IS NOT NULL THEN ST_GeomFromGeoJSON($${paramIndex})::geography ELSE NULL END`);
+      values.push(input.geofence_center ? JSON.stringify(input.geofence_center) : null);
+      paramIndex++;
+    }
+    if (input.geofence_radius_km !== undefined) {
+      fields.push(`geofence_radius_km = $${paramIndex++}`);
+      values.push(input.geofence_radius_km);
+    }
 
     if (fields.length === 0) {
       return this.getById(id); // No changes
@@ -154,7 +200,9 @@ export class SiteService {
       UPDATE sites 
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex} AND deleted_at IS NULL
-      RETURNING *
+      RETURNING *,
+        CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,
+        CASE WHEN geofence_center IS NOT NULL THEN ST_AsGeoJSON(geofence_center)::json ELSE NULL END as geofence_center_json
     `;
 
     const result = await this.db.query(query, values);
@@ -191,6 +239,10 @@ export class SiteService {
       country_allowlist: row.country_allowlist,
       country_denylist: row.country_denylist,
       block_vpn_proxy: row.block_vpn_proxy,
+      geofence_type: row.geofence_type,
+      geofence_polygon: row.geofence_polygon_json || null,
+      geofence_center: row.geofence_center_json || null,
+      geofence_radius_km: row.geofence_radius_km ? parseFloat(row.geofence_radius_km) : null,
       enabled: row.enabled,
       created_at: new Date(row.created_at),
       updated_at: new Date(row.updated_at),

@@ -24,8 +24,11 @@ export class AccessLogService {
             ip_country,
             ip_city,
             ip_lat,
-            ip_lng
-          ) VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ip_lng,
+            gps_lat,
+            gps_lng,
+            gps_accuracy
+          ) VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         `, [
           input.site_id,
           input.ip_address, // Should be anonymized by caller
@@ -37,6 +40,9 @@ export class AccessLogService {
           input.ip_city || null,
           input.ip_lat || null,
           input.ip_lng || null,
+          input.gps_lat || null,
+          input.gps_lng || null,
+          input.gps_accuracy || null,
         ]);
       } catch (error) {
         // Log error but don't throw (already async, no way to handle)

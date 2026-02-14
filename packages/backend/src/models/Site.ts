@@ -1,3 +1,5 @@
+import type { Polygon, Point } from 'geojson';
+
 export interface Site {
   id: string;
   slug: string;
@@ -9,6 +11,10 @@ export interface Site {
   country_allowlist: string[] | null;
   country_denylist: string[] | null;
   block_vpn_proxy: boolean;
+  geofence_type: 'polygon' | 'radius' | null;
+  geofence_polygon: Polygon | null;
+  geofence_center: Point | null;
+  geofence_radius_km: number | null;
   enabled: boolean;
   created_at: Date;
   updated_at: Date;
@@ -24,6 +30,10 @@ export interface CreateSiteInput {
   country_allowlist?: string[];
   country_denylist?: string[];
   block_vpn_proxy?: boolean;
+  geofence_type?: 'polygon' | 'radius';
+  geofence_polygon?: Polygon;
+  geofence_center?: Point;
+  geofence_radius_km?: number;
 }
 
 export interface UpdateSiteInput {
@@ -35,6 +45,10 @@ export interface UpdateSiteInput {
   country_allowlist?: string[];
   country_denylist?: string[];
   block_vpn_proxy?: boolean;
+  geofence_type?: 'polygon' | 'radius';
+  geofence_polygon?: Polygon;
+  geofence_center?: Point;
+  geofence_radius_km?: number;
   enabled?: boolean;
 }
 
