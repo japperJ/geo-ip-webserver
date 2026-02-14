@@ -1,0 +1,89 @@
+version: '3.8'
+
+# Development docker-compose with hot reload
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: geo-ip-postgres-dev
+    environment:
+      POSTGRES_DB: geo_ip_webserver
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d geo_ip_webserver"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - geo-ip-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: geo-ip-redis-dev
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - geo-ip-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: geo-ip-minio-dev
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - minio_dev_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - geo-ip-network
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: geo-ip-minio-init-dev
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+      /usr/bin/mc mb myminio/site-assets --ignore-existing;
+      /usr/bin/mc mb myminio/screenshots --ignore-existing;
+      /usr/bin/mc anonymous set download myminio/site-assets;
+      exit 0;
+      "
+    networks:
+      - geo-ip-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  minio_dev_data:
+    driver: local
+
+networks:
+  geo-ip-network:
+    driver: bridge

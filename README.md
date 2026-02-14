@@ -41,14 +41,15 @@ Multi-site content delivery platform with geo-fencing, IP-based access control, 
    cp packages/frontend/.env.example packages/frontend/.env
    ```
 
-4. **Start infrastructure**
+4. **Start infrastructure (PostgreSQL, Redis, MinIO)**
    ```bash
-   docker-compose up -d
+   docker-compose -f docker-compose.dev.yml up -d
    ```
    
    This starts:
    - PostgreSQL 16 with PostGIS on port 5434
-   - (Future: Caddy reverse proxy)
+   - Redis on port 6380
+   - MinIO (S3-compatible storage) on ports 9002-9003
 
 5. **Run database migrations**
    ```bash
@@ -188,7 +189,75 @@ npm run test:e2e:ui -w packages/frontend
 
 ## Deployment
 
-### Production Build
+### Docker Deployment (Recommended)
+
+The application includes complete Docker support for easy production deployment.
+
+#### Production Deployment
+
+1. **Configure environment variables**
+   ```bash
+   # Edit docker-compose.yml and update:
+   # - JWT_SECRET and COOKIE_SECRET (must be 32+ characters)
+   # - CORS_ORIGIN to match your domain
+   # - Database credentials (change from dev defaults)
+   ```
+
+2. **Build and start all services**
+   ```bash
+   docker-compose build
+   docker-compose up -d
+   ```
+
+   This starts:
+   - **Frontend** (Nginx) on port **8080**
+   - **Backend API** on port **3001**
+   - PostgreSQL 16 with PostGIS on port 5434
+   - Redis on port 6380
+   - MinIO (S3-compatible storage) on ports 9002-9003
+
+3. **Run database migrations**
+   ```bash
+   docker exec geo-ip-backend sh -c "cd packages/backend && npx node-pg-migrate up"
+   ```
+
+4. **Check service health**
+   ```bash
+   docker-compose ps
+   curl http://localhost:8080/health
+   ```
+
+5. **View logs**
+   ```bash
+   docker-compose logs -f backend
+   docker-compose logs -f frontend
+   ```
+
+#### Development with Docker Infrastructure
+
+For local development with hot-reload, use the dev compose file:
+
+```bash
+# Start only infrastructure (PostgreSQL, Redis, MinIO)
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run backend locally with hot-reload
+npm run dev -w packages/backend
+
+# Run frontend locally with hot-reload
+npm run dev -w packages/frontend
+```
+
+#### Docker Architecture
+
+- **Backend**: Multi-stage build with Node 20 Alpine, includes dumb-init for proper signal handling
+- **Frontend**: Multi-stage build with Vite compilation, served by Nginx with reverse proxy to backend
+- **Nginx**: Configured to proxy `/api/*` requests to backend, handles SPA routing, includes security headers
+- **Health Checks**: All services have health checks for orchestration reliability
+
+### Manual Production Build
+
+If not using Docker, you can build manually:
 
 ```bash
 # Build backend
@@ -198,25 +267,9 @@ npm run build -w packages/backend
 npm run build -w packages/frontend
 ```
 
-### Docker Deployment
+Then deploy the built files using your preferred hosting method.
 
-1. **Configure production environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with production values
-   ```
-
-2. **Build and start services**
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-3. **Run migrations**
-   ```bash
-   docker-compose -f docker-compose.prod.yml exec backend npm run migrate:up
-   ```
-
-### Nginx Configuration
+### Nginx Configuration (Manual Deployment)
 
 ```nginx
 server {

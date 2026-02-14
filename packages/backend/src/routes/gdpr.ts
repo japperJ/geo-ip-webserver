@@ -73,7 +73,7 @@ export async function gdprRoutes(fastify: FastifyInstance) {
   });
 
   // Get artifact pre-signed URL
-  fastify.get('/api/artifacts/:key(*)', {
+  fastify.get('/api/artifacts/:key(.*)', {
     preHandler: [fastify.authenticate]
   }, async (request, reply) => {
     const { key } = request.params as { key: string };

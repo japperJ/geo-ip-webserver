@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { siteApi, CreateSiteInput, UpdateSiteInput } from '@/lib/api';
+import { siteApi } from '@/lib/api';
+import type { CreateSiteInput, UpdateSiteInput } from '@/lib/api';
 import { validateIPList, ipArrayToText, ipTextToArray } from '@/lib/ipValidation';
 import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
 import { GeofenceMap } from '@/components/GeofenceMap';
