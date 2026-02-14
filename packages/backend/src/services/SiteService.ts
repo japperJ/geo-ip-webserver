@@ -172,14 +172,14 @@ export class SiteService {
       values.push(input.geofence_type);
     }
     if (input.geofence_polygon !== undefined) {
-      fields.push(`geofence_polygon = CASE WHEN $${paramIndex} IS NOT NULL THEN ST_GeomFromGeoJSON($${paramIndex})::geography ELSE NULL END`);
+      const polygonParam = paramIndex++;
+      fields.push(`geofence_polygon = ST_GeomFromGeoJSON($${polygonParam}::text)::geography`);
       values.push(input.geofence_polygon ? JSON.stringify(input.geofence_polygon) : null);
-      paramIndex++;
     }
     if (input.geofence_center !== undefined) {
-      fields.push(`geofence_center = CASE WHEN $${paramIndex} IS NOT NULL THEN ST_GeomFromGeoJSON($${paramIndex})::geography ELSE NULL END`);
+      const centerParam = paramIndex++;
+      fields.push(`geofence_center = ST_GeomFromGeoJSON($${centerParam}::text)::geography`);
       values.push(input.geofence_center ? JSON.stringify(input.geofence_center) : null);
-      paramIndex++;
     }
     if (input.geofence_radius_km !== undefined) {
       fields.push(`geofence_radius_km = $${paramIndex++}`);

@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText } from 'lucide-react';
+import { LayoutDashboard, FileText, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Sites', href: '/sites', icon: LayoutDashboard },
@@ -9,6 +11,7 @@ const navigation = [
 
 export function Layout() {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -48,9 +51,23 @@ export function Layout() {
 
           {/* Footer */}
           <div className="border-t border-gray-700 p-4">
-            <p className="text-xs text-gray-500">
-              Phase 1 MVP - v1.0.0
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">
+                Logged in as: <span className="text-white">{user?.email}</span>
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="w-full"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+              <p className="text-xs text-gray-500">
+                Phase 1 MVP - v1.0.0
+              </p>
+            </div>
           </div>
         </div>
       </div>

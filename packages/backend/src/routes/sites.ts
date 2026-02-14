@@ -62,13 +62,29 @@ export async function siteRoutes(fastify: FastifyInstance) {
     // Super admin sees all sites
     if (user.role === 'super_admin') {
       const result = await siteService.list(request.query);
-      return result;
+      return {
+        sites: result.sites,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+      };
     }
 
     // Regular users see only assigned sites
     const siteIds = Object.keys(user.sites);
     if (siteIds.length === 0) {
-      return { sites: [], total: 0, page: 1, limit: 10 };
+      return {
+        sites: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
+        },
+      };
     }
 
     const page = request.query.page || 1;
@@ -90,11 +106,15 @@ export async function siteRoutes(fastify: FastifyInstance) {
       [siteIds]
     );
 
+    const total = parseInt(countResult.rows[0].count);
     return {
       sites: result.rows,
-      total: parseInt(countResult.rows[0].count),
-      page,
-      limit,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   });
 

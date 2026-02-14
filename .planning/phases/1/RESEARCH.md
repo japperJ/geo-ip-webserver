@@ -13,12 +13,13 @@
 This research document provides implementation guidance for Phase 1 (MVP - IP-Based Access Control) of the geo-fenced multi-site webserver. All research is based on official documentation, proven patterns, and verified libraries.
 
 **Key Findings:**
-- MaxMind GeoIP2 with local MMDB files provides <1ms IP geolocation lookups
-- Fastify schema validation with Zod provides type-safe request validation
-- LRU cache + async logging keeps middleware latency <5ms
-- `ipaddr.js` provides battle-tested CIDR matching
+- MaxMind GeoIP2 with local MMDB files provides fast, offline IP geolocation lookups
+- MaxMind Anonymous IP DB exposes flags for VPN, proxy, hosting provider, and Tor exit nodes
+- **Decision:** `block_vpn_proxy` defaults to **BLOCK** (treat missing/null as `true`)
+- `ipaddr.js` provides battle-tested CIDR parsing and matching (IPv4 + IPv6)
+- Fastify `trustProxy` should be enabled only behind known reverse proxies
 - Pino (Fastify's default logger) provides structured JSON logging
-- React Query + shadcn/ui provides modern admin UI foundation
+- React Query + React Router (per stack decisions) provide a stable admin UI foundation
 
 **Critical Dependencies:**
 1. MaxMind GeoLite2-City.mmdb (free account required)
@@ -59,13 +60,13 @@ MaxMind provides IP geolocation databases in MMDB (MaxMind Database) format for 
 
 ```typescript
 // services/GeoIPService.ts
-import maxmind, { CityResponse, AsnResponse } from 'maxmind';
+import maxmind, { CityResponse, AnonymousIPResponse } from 'maxmind';
 import fs from 'fs/promises';
 import LRU from 'lru-cache';
 
 export class GeoIPService {
   private cityReader: maxmind.Reader<CityResponse> | null = null;
-  private anonReader: maxmind.Reader<AsnResponse> | null = null;
+  private anonReader: maxmind.Reader<AnonymousIPResponse> | null = null;
   
   // LRU cache: 10,000 entries, 5min TTL
   private cache = new LRU<string, CityResponse>({
@@ -80,10 +81,14 @@ export class GeoIPService {
 
   async init() {
     // Load MMDB files into memory (startup only, reuse reader)
-    this.cityReader = await maxmind.open<CityResponse>(this.cityDbPath);
+    this.cityReader = await maxmind.open<CityResponse>(this.cityDbPath, {
+      cache: { max: 10000 },
+    });
     
     if (this.anonDbPath && await this.fileExists(this.anonDbPath)) {
-      this.anonReader = await maxmind.open<AsnResponse>(this.anonDbPath);
+      this.anonReader = await maxmind.open<AnonymousIPResponse>(this.anonDbPath, {
+        cache: { max: 10000 },
+      });
     }
   }
 
@@ -119,9 +124,16 @@ export class GeoIPService {
     isProxy: boolean;
     isHosting: boolean;
     isTor: boolean;
+    isResidentialProxy: boolean;
   }> {
     if (!this.anonReader) {
-      return { isVpn: false, isProxy: false, isHosting: false, isTor: false };
+      return {
+        isVpn: false,
+        isProxy: false,
+        isHosting: false,
+        isTor: false,
+        isResidentialProxy: false,
+      };
     }
 
     const result = this.anonReader.get(ip);
@@ -131,6 +143,7 @@ export class GeoIPService {
       isProxy: result?.is_proxy || false,
       isHosting: result?.is_hosting_provider || false,
       isTor: result?.is_tor_exit_node || false,
+      isResidentialProxy: result?.is_residential_proxy || false,
     };
   }
 
@@ -359,10 +372,17 @@ export async function ipAccessControl(
     }
   }
 
-  // 6. VPN/Proxy detection (if enabled)
-  if (site.block_vpn_proxy) {
+  // 6. VPN/Proxy detection (default: BLOCK)
+  const blockVpnProxy = site.block_vpn_proxy !== false; // treat null/undefined as true
+  if (blockVpnProxy) {
     const anonCheck = await geoipService.isAnonymous(clientIP);
-    if (anonCheck.isVpn || anonCheck.isProxy || anonCheck.isHosting || anonCheck.isTor) {
+    if (
+      anonCheck.isVpn ||
+      anonCheck.isProxy ||
+      anonCheck.isHosting ||
+      anonCheck.isTor ||
+      anonCheck.isResidentialProxy
+    ) {
       await logAccessDenied(request, 'vpn_proxy_detected', clientIP, geoData);
       return reply.code(403).send({
         error: 'Access denied',
@@ -804,86 +824,37 @@ export async function siteRoutes(fastify: FastifyInstance) {
 **Source:** [RESTful API Design Best Practices](https://restfulapi.net/)  
 **Confidence:** HIGH (95%)
 
-### Request Validation with Zod
+### Request Validation with JSON Schema (Fastify)
 
-**Why Zod over JSON Schema:**
-- Type inference (TypeScript types generated automatically)
-- Better error messages
-- Runtime and compile-time validation
-- Simpler syntax
+Fastify ships with JSON Schema validation (AJV). Use JSON Schema for request/response validation and keep schema definitions close to routes.
 
 ```typescript
 // schemas/site.ts
-import { z } from 'zod';
-import { buildJsonSchemas } from 'fastify-zod';
-
-// Site model schema
-const siteCore = z.object({
-  id: z.string().uuid(),
-  slug: z.string().min(3).max(100).regex(/^[a-z0-9-]+$/),
-  hostname: z.string().min(3).max(255).regex(/^[a-z0-9.-]+$/).optional(),
-  name: z.string().min(1).max(255),
-  access_mode: z.enum(['disabled', 'ip_only', 'geo_only', 'ip_and_geo']),
-  ip_allowlist: z.array(z.string()).optional(),
-  ip_denylist: z.array(z.string()).optional(),
-  country_allowlist: z.array(z.string().length(2)).optional(), // ISO 3166-1 alpha-2
-  country_denylist: z.array(z.string().length(2)).optional(),
-  block_vpn_proxy: z.boolean().default(false),
-  enabled: z.boolean().default(true),
-  created_at: z.date(),
-  updated_at: z.date(),
-});
-
-// Create schema (subset of fields, omit auto-generated)
-const createSite = siteCore.pick({
-  slug: true,
-  hostname: true,
-  name: true,
-  access_mode: true,
-  ip_allowlist: true,
-  ip_denylist: true,
-  country_allowlist: true,
-  country_denylist: true,
-  block_vpn_proxy: true,
-});
-
-// Update schema (all fields optional)
-const updateSite = siteCore.partial().omit({ id: true, slug: true, created_at: true });
-
-// Query params for list
-const listSites = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  access_mode: z.enum(['disabled', 'ip_only', 'geo_only', 'ip_and_geo']).optional(),
-});
-
-// Route params (UUID validation)
-const siteParams = z.object({
-  id: z.string().uuid(),
-});
-
-// Build JSON schemas for Fastify
-export const { schemas: siteSchema, $ref } = buildJsonSchemas({
-  site: siteCore,
-  create: createSite,
-  update: updateSite,
-  list: listSites,
-  params: siteParams,
-  siteList: z.object({
-    sites: z.array(siteCore),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-  }),
-}, { $id: 'SiteSchema' });
-
-// Export TypeScript types
-export type Site = z.infer<typeof siteCore>;
-export type CreateSite = z.infer<typeof createSite>;
-export type UpdateSite = z.infer<typeof updateSite>;
+export const siteSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    slug: { type: 'string', minLength: 3, maxLength: 100, pattern: '^[a-z0-9-]+$' },
+    hostname: { type: 'string', minLength: 3, maxLength: 255, pattern: '^[a-z0-9.-]+$' },
+    name: { type: 'string', minLength: 1, maxLength: 255 },
+    access_mode: { enum: ['disabled', 'ip_only'] },
+    ip_allowlist: { type: 'array', items: { type: 'string' } },
+    ip_denylist: { type: 'array', items: { type: 'string' } },
+    country_allowlist: { type: 'array', items: { type: 'string', minLength: 2, maxLength: 2 } },
+    country_denylist: { type: 'array', items: { type: 'string', minLength: 2, maxLength: 2 } },
+    block_vpn_proxy: { type: 'boolean', default: true },
+    enabled: { type: 'boolean', default: true },
+    created_at: { type: 'string', format: 'date-time' },
+    updated_at: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'slug', 'name', 'access_mode', 'enabled'],
+  additionalProperties: false,
+};
 ```
 
-**Source:** [fastify-zod plugin](https://github.com/turkerdev/fastify-type-provider-zod)  
+**Note:** Phase 1 only needs `access_mode` values `disabled` and `ip_only`. Add `geo_only` and `both` in Phase 2.
+
+**Source:** [Fastify Validation and Serialization](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/)  
 **Confidence:** HIGH (90%)
 
 ### Error Responses and Status Codes
@@ -895,7 +866,7 @@ export type UpdateSite = z.infer<typeof updateSite>;
 | 200 OK | Success | GET, PATCH (with response body) |
 | 201 Created | Resource created | POST |
 | 204 No Content | Success (no body) | DELETE |
-| 400 Bad Request | Validation error | Invalid input (Zod validation) |
+| 400 Bad Request | Validation error | Invalid input (schema validation) |
 | 401 Unauthorized | Not authenticated | Missing/invalid JWT (Phase 3) |
 | 403 Forbidden | Not authorized | RBAC check failed (Phase 3) |
 | 404 Not Found | Resource not found | Site ID doesn't exist |
@@ -964,21 +935,16 @@ fastify.setErrorHandler((error, request, reply) => {
 
 ### Technology Stack
 
-**Recommended Stack:**
+**Recommended Stack (per SUMMARY.md):**
 - **Framework:** React 18 + TypeScript
-- **Build Tool:** Vite (fast HMR, modern)
+- **Build Tool:** Vite
 - **Data Fetching:** TanStack Query (React Query v5)
-- **UI Components:** shadcn/ui (Tailwind-based, accessible)
-- **Forms:** React Hook Form + Zod
 - **Routing:** React Router v6
+- **HTTP Client:** axios
 
-**Why shadcn/ui over MUI/Ant Design:**
-- Copy-paste components (not a dependency)
-- Full customization (Tailwind CSS)
-- Built on Radix UI (accessible)
-- Smaller bundle size
+**UI Component Library:** Open choice for Phase 1 (keep consistent with existing codebase conventions).
 
-**Source:** [shadcn/ui](https://ui.shadcn.com/), [TanStack Query](https://tanstack.com/query/latest)  
+**Source:** `.planning/research/SUMMARY.md`  
 **Confidence:** HIGH (90%)
 
 ### Site Management Components
@@ -1049,8 +1015,8 @@ export function SitesPage() {
 }
 ```
 
-**Source:** [shadcn/ui Table component](https://ui.shadcn.com/docs/components/table)  
-**Confidence:** HIGH (90%)
+**Source:** UI components per chosen library (Phase 1 implementation)  
+**Confidence:** MEDIUM (70%)
 
 #### IP Rules Editor
 
@@ -1664,14 +1630,17 @@ Add buffer for debugging, code review, iteration: **4-5 weeks total** (matches r
 | Source | URL | Confidence |
 |---|---|---|
 | Fastify | https://fastify.dev/docs/ | HIGH |
+| Fastify trustProxy | https://fastify.dev/docs/latest/Reference/Server/#trustproxy | HIGH |
 | MaxMind GeoIP2 | https://dev.maxmind.com/geoip | HIGH |
+| MaxMind Anonymous IP DB | https://dev.maxmind.com/geoip/docs/databases/anonymous-ip/ | HIGH |
+| MaxMind City/Country DB | https://dev.maxmind.com/geoip/docs/databases/city-and-country/ | HIGH |
 | PostgreSQL 16 | https://www.postgresql.org/docs/16/ | HIGH |
 | node-maxmind | https://github.com/runk/node-maxmind | HIGH |
 | ipaddr.js | https://github.com/whitequark/ipaddr.js | HIGH |
 | Pino | https://getpino.io/ | HIGH |
-| Zod | https://zod.dev/ | HIGH |
 | React Query | https://tanstack.com/query/latest | HIGH |
-| shadcn/ui | https://ui.shadcn.com/ | HIGH |
+| React Router | https://reactrouter.com/ | HIGH |
+| axios | https://axios-http.com/ | HIGH |
 | Playwright | https://playwright.dev/ | HIGH |
 | Vitest | https://vitest.dev/ | HIGH |
 

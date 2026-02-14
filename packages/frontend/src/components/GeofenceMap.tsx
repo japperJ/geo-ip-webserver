@@ -69,11 +69,30 @@ export function GeofenceMap({
     const drawControl = new L.Control.Draw({
       draw: {
         polygon: {
-          allowIntersection: false,
+          allowIntersection: true, // Changed to true - might be causing auto-close
           showArea: true,
+          shapeOptions: {
+            color: '#3b82f6',
+            weight: 3,
+          },
+          repeatMode: false,
+          drawError: {
+            color: '#e74c3c',
+            timeout: 1000,
+          },
         },
-        circle: true,
-        rectangle: true,
+        circle: {
+          shapeOptions: {
+            color: '#3b82f6',
+            weight: 3,
+          },
+        },
+        rectangle: {
+          shapeOptions: {
+            color: '#3b82f6',
+            weight: 3,
+          },
+        },
         marker: false,
         polyline: false,
         circlemarker: false,
@@ -112,7 +131,8 @@ export function GeofenceMap({
           },
           radius_km: radiusMeters / 1000,
         });
-      } else if (layer instanceof L.Polygon) {
+      } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+        // Both L.Polygon and L.Rectangle are handled as polygons
         const polygon = layer as L.Polygon;
         const latLngs = polygon.getLatLngs()[0] as L.LatLng[];
         const coordinates = latLngs.map((ll) => [ll.lng, ll.lat]);

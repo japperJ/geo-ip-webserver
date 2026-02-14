@@ -7,6 +7,15 @@ const api = axios.create({
   },
 });
 
+// Add JWT token to all requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Access Log types
 export interface AccessLog {
   id: string;

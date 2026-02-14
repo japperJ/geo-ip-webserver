@@ -224,11 +224,11 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - `models/Site.ts`: Type definitions and validation schemas
   
 - [ ] **MVP-002:** Implement Site CRUD API routes
-  - `POST /api/sites` - Create site (later: super admin only)
-  - `GET /api/sites/:id` - Get site by ID
-  - `GET /api/sites` - List all sites
-  - `PATCH /api/sites/:id` - Update site settings
-  - `DELETE /api/sites/:id` - Delete site (later: super admin only)
+  - `POST /api/admin/sites` - Create site (later: super admin only)
+  - `GET /api/admin/sites/:id` - Get site by ID
+  - `GET /api/admin/sites` - List all sites
+  - `PATCH /api/admin/sites/:id` - Update site settings
+  - `DELETE /api/admin/sites/:id` - Delete site (later: super admin only)
   
 - [ ] **MVP-003:** Add Fastify schema validation
   - Define JSON schemas for request/response validation
@@ -278,7 +278,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Apply before storing in database (GDPR compliance)
   
 - [ ] **MVP-012:** Create log query API
-  - `GET /api/sites/:id/logs` - Get access logs (paginated, 100 per page)
+  - `GET /api/admin/access-logs` - Get access logs (paginated, 100 per page)
   - Query params: `?allowed=true/false&limit=100&offset=0`
   - Order by timestamp DESC
   
@@ -294,7 +294,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Responsive layout (Tailwind CSS or shadcn/ui)
   
 - [ ] **MVP-015:** Implement Site List page
-  - Fetch sites from `GET /api/sites`
+  - Fetch sites from `GET /api/admin/sites`
   - Display table: Name, Hostname, Access Mode, Enabled
   - Actions: View, Edit, Delete
   
@@ -303,7 +303,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - IP allowlist/denylist editor (textarea, one IP/CIDR per line)
   - Country allowlist/denylist editor (multi-select dropdown, ISO codes)
   - VPN blocking toggle
-  - Save button → `PATCH /api/sites/:id`
+  - Save button → `PATCH /api/admin/sites/:id`
   
 - [ ] **MVP-017:** Implement IP list validation in UI
   - Validate IP addresses and CIDR notation
@@ -317,7 +317,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
 
 #### Week 5: Admin UI - Access Logs & Testing
 - [ ] **MVP-019:** Implement Access Logs page
-  - Fetch logs from `GET /api/sites/:id/logs`
+  - Fetch logs from `GET /api/admin/access-logs`
   - Display table: Timestamp, IP, Country, Allowed/Blocked, Reason
   - Pagination controls
   - Filter: Show only blocked / Show only allowed
@@ -428,7 +428,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Conditional execution based on `access_mode`
   
 - [ ] **GEO-006:** Update Site API to accept geofence data
-  - `PATCH /api/sites/:id` - Accept `geofence_polygon` (GeoJSON), `geofence_type`, `geofence_radius_km`
+  - `PATCH /api/admin/sites/:id` - Accept `geofence_polygon` (GeoJSON), `geofence_type`, `geofence_radius_km`
   - Validate GeoJSON format (Turf.js validation)
   - Auto-fix polygon winding order (Turf.js rewind)
   
@@ -671,17 +671,17 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Attach `request.siteRole` (admin or viewer)
   
 - [ ] **RBAC-003:** Protect existing Site API endpoints
-  - `POST /api/sites` - Require super_admin
-  - `GET /api/sites` - Filter by user's accessible sites
-  - `GET /api/sites/:id` - Require site access (super_admin or assigned)
-  - `PATCH /api/sites/:id` - Require super_admin or site_admin role
-  - `DELETE /api/sites/:id` - Require super_admin
+  - `POST /api/admin/sites` - Require super_admin
+  - `GET /api/admin/sites` - Filter by user's accessible sites
+  - `GET /api/admin/sites/:id` - Require site access (super_admin or assigned)
+  - `PATCH /api/admin/sites/:id` - Require super_admin or site_admin role
+  - `DELETE /api/admin/sites/:id` - Require super_admin
   
 - [ ] **RBAC-004:** Create site delegation endpoints
-  - `POST /api/sites/:id/admins` - Grant site role (super_admin only)
+  - `POST /api/admin/sites/:id/admins` - Grant site role (super_admin only)
     - Body: `{ userId, role: 'admin' | 'viewer' }`
-  - `GET /api/sites/:id/admins` - List site admins (super_admin, site_admin)
-  - `DELETE /api/sites/:id/admins/:userId` - Revoke site role (super_admin only)
+  - `GET /api/admin/sites/:id/admins` - List site admins (super_admin, site_admin)
+  - `DELETE /api/admin/sites/:id/admins/:userId` - Revoke site role (super_admin only)
   
 - [ ] **RBAC-005:** Update JWT payload to include sites
   - Include sites map in JWT: `{ siteId: role, ... }`
@@ -890,7 +890,7 @@ This roadmap defines a 6-phase implementation plan for building a geo-fenced mul
   - Prevents direct S3 access, enforces RBAC
   
 - [ ] **ART-010:** Create artifact API endpoints
-  - `GET /api/sites/:id/artifacts` - List artifacts (screenshots) for site
+  - `GET /api/admin/sites/:id/artifacts` - List artifacts (screenshots) for site
   - `GET /api/artifacts/:key` - Get pre-signed URL for download
   - Require site access (super_admin or assigned admin/viewer)
   

@@ -3,6 +3,20 @@ import { z } from 'zod';
 // Access mode enum
 const accessModeSchema = z.enum(['disabled', 'ip_only', 'geo_only', 'ip_and_geo']);
 
+// Geofence type enum
+const geofenceTypeSchema = z.enum(['polygon', 'radius']).nullable();
+
+// GeoJSON schemas (simplified - just accept objects for now since full validation is complex)
+const geoJsonPolygonSchema = z.object({
+  type: z.literal('Polygon'),
+  coordinates: z.array(z.array(z.array(z.number()))),
+}).nullable();
+
+const geoJsonPointSchema = z.object({
+  type: z.literal('Point'),
+  coordinates: z.array(z.number()),
+}).nullable();
+
 // Core site schema
 export const siteSchema = z.object({
   id: z.string().uuid(),
@@ -15,6 +29,10 @@ export const siteSchema = z.object({
   country_allowlist: z.array(z.string().length(2, 'Country code must be 2 characters (ISO 3166-1 alpha-2)')).nullable(),
   country_denylist: z.array(z.string().length(2)).nullable(),
   block_vpn_proxy: z.boolean(),
+  geofence_type: geofenceTypeSchema,
+  geofence_polygon: geoJsonPolygonSchema,
+  geofence_center: geoJsonPointSchema,
+  geofence_radius_km: z.number().nullable(),
   enabled: z.boolean(),
   created_at: z.date(),
   updated_at: z.date(),
@@ -31,6 +49,10 @@ export const createSiteSchema = z.object({
   country_allowlist: z.array(z.string().length(2)).optional(),
   country_denylist: z.array(z.string().length(2)).optional(),
   block_vpn_proxy: z.boolean().default(false),
+  geofence_type: geofenceTypeSchema.optional(),
+  geofence_polygon: geoJsonPolygonSchema.optional(),
+  geofence_center: geoJsonPointSchema.optional(),
+  geofence_radius_km: z.number().nullable().optional(),
 });
 
 // Update site schema (all fields optional)
@@ -43,6 +65,10 @@ export const updateSiteSchema = z.object({
   country_allowlist: z.array(z.string().length(2)).optional(),
   country_denylist: z.array(z.string().length(2)).optional(),
   block_vpn_proxy: z.boolean().optional(),
+  geofence_type: geofenceTypeSchema.optional(),
+  geofence_polygon: geoJsonPolygonSchema.optional(),
+  geofence_center: geoJsonPointSchema.optional(),
+  geofence_radius_km: z.number().nullable().optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -61,9 +87,12 @@ export const siteIdParamSchema = z.object({
 // List response schema
 export const listSitesResponseSchema = z.object({
   sites: z.array(siteSchema),
-  total: z.number().int(),
-  page: z.number().int(),
-  limit: z.number().int(),
+  pagination: z.object({
+    page: z.number().int(),
+    limit: z.number().int(),
+    total: z.number().int(),
+    totalPages: z.number().int(),
+  }),
 });
 
 // Export TypeScript types

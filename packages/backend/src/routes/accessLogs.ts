@@ -26,16 +26,28 @@ export async function accessLogRoutes(fastify: FastifyInstance) {
 
   // List access logs
   server.get('/access-logs', {
+    onRequest: [fastify.authenticate],
     schema: {
       querystring: accessLogsQuerySchema,
     },
   }, async (request, reply) => {
     const result = await accessLogService.query(request.query);
-    return result;
+    
+    // Transform to match frontend expectations
+    return {
+      logs: result.logs,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    };
   });
 
   // Get single access log
   server.get('/access-logs/:id', {
+    onRequest: [fastify.authenticate],
     schema: {
       params: logIdParamSchema,
     },
