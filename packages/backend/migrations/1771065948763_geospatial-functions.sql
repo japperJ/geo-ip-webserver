@@ -17,9 +17,9 @@ RETURNS BOOLEAN AS $$
 DECLARE
     result BOOLEAN;
 BEGIN
-    SELECT ST_Covers(
-        geofence_polygon,
-        ST_GeogFromText(format('POINT(%s %s)', p_longitude, p_latitude))
+    SELECT ST_Within(
+        ST_GeogFromText(format('POINT(%s %s)', p_longitude, p_latitude))::geometry,
+        geofence_polygon::geometry
     )
     INTO result
     FROM sites
@@ -32,7 +32,7 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 COMMENT ON FUNCTION is_point_in_geofence IS 
-'Check if a lat/lng point is within a site''s polygon geofence using ST_Covers. Returns false if site has no polygon geofence.';
+'Check if a lat/lng point is within a site''s polygon geofence using ST_Within. Returns false if site has no polygon geofence.';
 
 -- ============================================================================
 -- FUNCTION: Check if point is within site's radius geofence
