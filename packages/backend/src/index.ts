@@ -11,6 +11,9 @@ import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import redis from '@fastify/redis';
 import geoipPlugin from './plugins/geoip.js';
+import metricsPlugin from './plugins/metrics.js';
+import sentryPlugin from './plugins/sentry.js';
+import rateLimit from '@fastify/rate-limit';
 import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
 import { accessLogRoutes } from './routes/accessLogs.js';
@@ -57,8 +60,26 @@ async function buildServer() {
     credentials: true,
   });
 
+  // Phase 5: Enhanced helmet configuration with CSP
   await server.register(helmet, {
-    contentSecurityPolicy: false, // Will configure in Phase 5
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for some CSS-in-JS
+        imgSrc: ["'self'", "data:", "https://*.openstreetmap.org"],
+        fontSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
   });
 
   // Decorate with pg pool (instead of plugin for Fastify 5 compatibility)
@@ -81,6 +102,25 @@ async function buildServer() {
 
   // Register authenticate decorator
   server.decorate('authenticate', authenticateJWT);
+
+  // Phase 5: Register Sentry for error tracking
+  await server.register(sentryPlugin);
+
+  // Phase 5: Register Prometheus metrics
+  await server.register(metricsPlugin);
+
+  // Phase 5: Register rate limiting
+  await server.register(rateLimit, {
+    global: true,
+    max: 100, // 100 requests per window
+    timeWindow: '1 minute',
+    redis: server.redis, // Use Redis for distributed rate limiting
+    nameSpace: 'geoip-rate-limit:',
+    skipOnError: true, // Don't fail requests if Redis is down
+    keyGenerator: (request) => {
+      return request.ip; // Rate limit by IP address
+    },
+  });
 
   // Initialize cache service
   const cacheService = new CacheService(server);
@@ -131,12 +171,31 @@ async function buildServer() {
     }
   });
 
-  // Metrics endpoint
-  server.get('/metrics', async () => {
-    const cacheStats = cacheService.getStats();
-    return {
-      cache: cacheStats,
-    };
+  // Readiness probe (for Kubernetes)
+  server.get('/ready', async () => {
+    try {
+      // Check database
+      await server.pg.query('SELECT 1');
+      
+      // Check Redis
+      const redisHealth = await server.redis.ping();
+      if (redisHealth !== 'PONG') {
+        return { status: 'not_ready', reason: 'redis_unavailable' };
+      }
+      
+      // Check cache is warmed
+      const cacheStats = cacheService.getStats();
+      if (cacheStats.size === 0 && cacheStats.memorySize === 0) {
+        return { status: 'not_ready', reason: 'cache_not_warmed' };
+      }
+      
+      return { 
+        status: 'ready',
+        cache: cacheStats,
+      };
+    } catch (error) {
+      return { status: 'not_ready', error: String(error) };
+    }
   });
 
   // Root route
@@ -144,7 +203,7 @@ async function buildServer() {
     return { 
       name: 'Geo-IP Webserver API',
       version: '1.0.0',
-      phase: '4 - Artifacts & GDPR Compliance',
+      phase: '5 - Production Hardening',
       environment: process.env.NODE_ENV || 'development'
     };
   });

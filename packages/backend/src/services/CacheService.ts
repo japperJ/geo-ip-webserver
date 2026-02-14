@@ -1,6 +1,7 @@
 import { LRUCache } from 'lru-cache';
 import type { FastifyInstance } from 'fastify';
 import type { Site } from '../models/Site.js';
+import { cacheHitRate, cacheSizeGauge } from '../plugins/metrics.js';
 
 const MEMORY_CACHE_MAX = 1000;
 const MEMORY_CACHE_TTL = 60 * 1000; // 60 seconds
@@ -159,6 +160,10 @@ export class CacheService {
     const totalRequests = this.stats.memoryHits + this.stats.redisHits + this.stats.dbHits;
     const cacheHits = this.stats.memoryHits + this.stats.redisHits;
     const hitRate = totalRequests > 0 ? (cacheHits / totalRequests) * 100 : 0;
+
+    // Update Prometheus metrics
+    cacheHitRate.set(hitRate / 100); // Convert to 0-1 range
+    cacheSizeGauge.set(this.memoryCache.size);
 
     return {
       memoryHits: this.stats.memoryHits,

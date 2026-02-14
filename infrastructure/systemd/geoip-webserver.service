@@ -1,0 +1,49 @@
+# Systemd service for Geo-IP Webserver Backend
+# Install to: /etc/systemd/system/geoip-webserver.service
+
+[Unit]
+Description=Geo-IP Webserver Backend
+Documentation=https://github.com/yourusername/geo-ip-webserver
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=geoip
+Group=geoip
+WorkingDirectory=/opt/geo-ip-webserver/packages/backend
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=0.0.0.0
+EnvironmentFile=/opt/geo-ip-webserver/.env
+
+# Start command
+ExecStart=/usr/bin/node dist/index.js
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/geo-ip-webserver/packages/backend/data
+ReadWritePaths=/opt/geo-ip-webserver/packages/backend/logs
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geoip-webserver
+
+[Install]
+WantedBy=multi-user.target
