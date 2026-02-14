@@ -29,10 +29,11 @@ CREATE TABLE sites (
     enabled BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
     
     CONSTRAINT sites_slug_not_empty CHECK (LENGTH(TRIM(slug)) > 0),
     CONSTRAINT sites_name_not_empty CHECK (LENGTH(TRIM(name)) > 0),
-    CONSTRAINT sites_access_mode_valid CHECK (access_mode IN ('disabled', 'allowlist', 'denylist', 'geofence')),
+    CONSTRAINT sites_access_mode_valid CHECK (access_mode IN ('disabled', 'ip_only', 'geo_only', 'ip_and_geo')),
     CONSTRAINT sites_geofence_type_valid CHECK (geofence_type IS NULL OR geofence_type IN ('polygon', 'radius'))
 );
 
@@ -44,7 +45,7 @@ CREATE INDEX idx_sites_geofence ON sites USING GIST(geofence_polygon);
 COMMENT ON TABLE sites IS 'Multi-site configuration with geo-fencing and access control';
 COMMENT ON COLUMN sites.slug IS 'URL-friendly unique identifier';
 COMMENT ON COLUMN sites.hostname IS 'Primary hostname for this site (e.g., example.com)';
-COMMENT ON COLUMN sites.access_mode IS 'Access control mode: disabled, allowlist, denylist, geofence';
+COMMENT ON COLUMN sites.access_mode IS 'Access control mode: disabled, ip_only, geo_only, ip_and_geo';
 COMMENT ON COLUMN sites.geofence_type IS 'Type of geofence: polygon or radius';
 COMMENT ON COLUMN sites.geofence_polygon IS 'PostGIS geography polygon (WGS84) for polygon-based geofencing';
 COMMENT ON COLUMN sites.geofence_center IS 'Center point for radius-based geofencing';
