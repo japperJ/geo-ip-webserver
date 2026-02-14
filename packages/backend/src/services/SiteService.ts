@@ -25,8 +25,8 @@ export class SiteService {
         geofence_center,
         geofence_radius_km
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
-        CASE WHEN $11 IS NOT NULL THEN ST_GeomFromGeoJSON($11)::geography ELSE NULL END,
-        CASE WHEN $12 IS NOT NULL THEN ST_GeomFromGeoJSON($12)::geography ELSE NULL END,
+        CASE WHEN $11::text IS NOT NULL THEN ST_GeomFromGeoJSON($11::text)::geography ELSE NULL END,
+        CASE WHEN $12::text IS NOT NULL THEN ST_GeomFromGeoJSON($12::text)::geography ELSE NULL END,
         $13)
       RETURNING *,
         CASE WHEN geofence_polygon IS NOT NULL THEN ST_AsGeoJSON(geofence_polygon)::json ELSE NULL END as geofence_polygon_json,

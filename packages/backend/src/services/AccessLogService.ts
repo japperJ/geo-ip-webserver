@@ -4,6 +4,7 @@ import type { ScreenshotService } from './ScreenshotService.js';
 
 export class AccessLogService {
   private screenshotService?: ScreenshotService;
+  private syncMode: boolean = false;
 
   constructor(private db: Pool) {}
 
@@ -12,13 +13,20 @@ export class AccessLogService {
   }
 
   /**
+   * Enable synchronous mode for testing
+   * When enabled, log() will await the DB insert instead of using setImmediate
+   */
+  setSyncMode(enabled: boolean) {
+    this.syncMode = enabled;
+  }
+
+  /**
    * Log access decision (allowed or denied)
-   * Non-blocking: Uses setImmediate to log asynchronously
+   * Non-blocking: Uses setImmediate to log asynchronously (unless syncMode is enabled)
    * Phase 4: Enqueues screenshot for blocked requests
    */
   async log(input: CreateAccessLogInput): Promise<void> {
-    // Log asynchronously to avoid blocking request
-    setImmediate(async () => {
+    const performLog = async () => {
       try {
         const result = await this.db.query(`
           INSERT INTO access_logs (
@@ -76,7 +84,15 @@ export class AccessLogService {
         // Log error but don't throw (already async, no way to handle)
         console.error('Failed to log access decision:', error);
       }
-    });
+    };
+
+    // In sync mode (for testing), await the log operation
+    // In production, use setImmediate to avoid blocking the request
+    if (this.syncMode) {
+      await performLog();
+    } else {
+      setImmediate(performLog);
+    }
   }
 
   /**

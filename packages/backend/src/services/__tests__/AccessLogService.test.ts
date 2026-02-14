@@ -9,6 +9,9 @@ describe('AccessLogService', () => {
   let testSiteId: string;
 
   beforeAll(async () => {
+    // Enable sync mode for reliable testing
+    accessLogService.setSyncMode(true);
+
     // Create test site once for all tests in this suite
     const site = await siteService.create({
       slug: 'test-site-access-logs',
@@ -43,10 +46,7 @@ describe('AccessLogService', () => {
       ip_lng: -74.0060,
     });
 
-    // Wait for async insert
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Query logs
+    // Query logs (no wait needed in sync mode)
     const result = await accessLogService.query({ site_id: testSiteId });
     
     expect(result.total).toBe(1);
@@ -80,8 +80,6 @@ describe('AccessLogService', () => {
       reason: 'ip_denylist',
     });
 
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     // Query only denied
     const denied = await accessLogService.query({ site_id: testSiteId, allowed: false });
     expect(denied.total).toBe(1);
@@ -105,8 +103,6 @@ describe('AccessLogService', () => {
         reason: 'passed',
       });
     }
-
-    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Get page 1 (limit 2)
     const page1 = await accessLogService.query({ site_id: testSiteId, page: 1, limit: 2 });
@@ -140,8 +136,6 @@ describe('AccessLogService', () => {
       reason: 'passed',
     });
 
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     const result = await accessLogService.query({ site_id: testSiteId, ip: '192.168' });
     expect(result.total).toBe(1);
     expect(result.logs[0].ip_address).toBe('192.168.1.0');
@@ -156,8 +150,6 @@ describe('AccessLogService', () => {
       allowed: true,
       reason: 'passed',
     });
-
-    await new Promise(resolve => setTimeout(resolve, 100));
 
     const result = await accessLogService.query({ site_id: testSiteId });
     const logId = result.logs[0].id;
