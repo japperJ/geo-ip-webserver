@@ -20,8 +20,10 @@
     "@fastify/postgres": "^5.2.2",
     "@fastify/redis": "^6.1.1",
     "@fastify/static": "^7.0.0",
+    "@fastify/type-provider-typebox": "^6.1.0",
     "@sinclair/typebox": "^0.32.15",
     "fastify": "^4.26.0",
+    "fastify-plugin": "^4.5.1",
     "maxmind": "^4.3.11",
     "node-pg-migrate": "^7.0.2",
     "pg": "^8.11.3",
@@ -29,6 +31,7 @@
     "pino-pretty": "^10.3.1"
   },
   "devDependencies": {
+    "@types/maxmind": "^2.0.4",
     "@types/node": "^20.11.19",
     "@types/pg": "^8.11.0",
     "@typescript-eslint/eslint-plugin": "^7.0.1",

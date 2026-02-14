@@ -4,6 +4,24 @@ import fastifyEnv from '@fastify/env';
 import fastifyPostgres from '@fastify/postgres';
 import fastifyRedis from '@fastify/redis';
 import fastifyCors from '@fastify/cors';
+import geoipPlugin from './plugins/geoip.js';
+import { existsSync } from 'fs';
+
+interface EnvConfig {
+  NODE_ENV: string;
+  HOST: string;
+  PORT: number;
+  LOG_LEVEL: string;
+  DATABASE_URL: string;
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: EnvConfig;
+  }
+}
 
 const envSchema = {
   type: 'object',
@@ -72,6 +90,17 @@ async function buildServer() {
     closeClient: true
   });
 
+  // Register GeoIP plugin (optional if databases not present)
+  const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
+  const countryDbPath = process.env.GEOIP_COUNTRY_DB_PATH || './data/GeoLite2-Country.mmdb';
+  
+  if (existsSync(cityDbPath) && existsSync(countryDbPath)) {
+    await server.register(geoipPlugin);
+    server.log.info('GeoIP plugin registered');
+  } else {
+    server.log.warn('GeoIP databases not found - GeoIP functionality disabled');
+  }
+
   // Health check route
   server.get('/health', async () => {
     const dbCheck = await server.pg.query('SELECT 1 as ok');
@@ -93,6 +122,25 @@ async function buildServer() {
       environment: server.config.NODE_ENV
     };
   });
+
+  // GeoIP lookup route (only if plugin loaded)
+  if (existsSync(cityDbPath) && existsSync(countryDbPath)) {
+    server.get('/geoip/:ip', async (request, reply) => {
+      const { ip } = request.params as { ip: string };
+      const location = server.geoip.lookup(ip);
+      
+      if (!location) {
+        return reply.code(404).send({ error: 'Location not found for IP' });
+      }
+      
+      return location;
+    });
+    
+    // GeoIP stats route
+    server.get('/geoip/stats', async () => {
+      return server.geoip.getCacheStats();
+    });
+  }
 
   return server;
 }
