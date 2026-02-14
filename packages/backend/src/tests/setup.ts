@@ -11,7 +11,8 @@ export const testPool = new Pool({
 
 // Clean up test database before all tests
 beforeAll(async () => {
-  await testPool.query('DELETE FROM sites');
+  // Clean only access_logs, let test suites manage their sites
+  await testPool.query('DELETE FROM access_logs');
 });
 
 // Close pool after all tests

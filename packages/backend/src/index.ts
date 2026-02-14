@@ -9,8 +9,10 @@ import helmet from '@fastify/helmet';
 import geoipPlugin from './plugins/geoip.js';
 import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
+import { accessLogRoutes } from './routes/accessLogs.js';
 import { siteResolution } from './middleware/siteResolution.js';
 import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
 
@@ -77,6 +79,7 @@ async function buildServer() {
 
   // Register routes
   await server.register(siteRoutes, { prefix: '/api' });
+  await server.register(accessLogRoutes, { prefix: '/api' });
 
   // Test route for IP access control (can be removed after testing)
   server.get('/test-protected', async (request) => {
@@ -103,6 +106,27 @@ async function buildServer() {
     // GeoIP stats route
     server.get('/geoip/stats', async () => {
       return server.geoip.getCacheStats();
+    });
+  }
+
+  // Manual trigger for log retention (dev only)
+  if (process.env.NODE_ENV !== 'production') {
+    server.post('/admin/trigger-log-retention', async () => {
+      const retentionDays = parseInt(process.env.LOG_RETENTION_DAYS || '90');
+      
+      const result = await pool.query(`
+        SELECT COUNT(*) 
+        FROM access_logs 
+        WHERE timestamp < NOW() - INTERVAL '${retentionDays} days'
+      `);
+
+      const count = parseInt(result.rows[0].count);
+      
+      return {
+        message: 'Log retention job triggered',
+        would_delete: count,
+        retention_days: retentionDays,
+      };
     });
   }
 
@@ -140,6 +164,9 @@ async function buildServer() {
 async function start() {
   try {
     const server = await buildServer();
+    
+    // Start cron jobs
+    startLogRetentionJob();
     
     const port = parseInt(process.env.PORT || '3000');
     const host = process.env.HOST || '0.0.0.0';

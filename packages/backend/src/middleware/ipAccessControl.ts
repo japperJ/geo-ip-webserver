@@ -1,7 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { getClientIP } from '../utils/getClientIP.js';
 import { matchCIDR } from '../utils/matchCIDR.js';
+import { anonymizeIP } from '../utils/anonymizeIP.js';
+import { AccessLogService } from '../services/AccessLogService.js';
 import { Site } from '../models/Site.js';
+import { pool } from '../db/index.js';
 
 // Extend FastifyRequest to include site and geoip
 declare module 'fastify' {
@@ -9,6 +12,9 @@ declare module 'fastify' {
     site?: Site;
   }
 }
+
+// Initialize AccessLogService
+const accessLogService = new AccessLogService(pool);
 
 /**
  * IP-based access control middleware
@@ -38,6 +44,19 @@ export async function ipAccessControl(
   const clientIP = getClientIP(request);
   if (!clientIP) {
     request.log.error('Unable to determine client IP');
+    
+    // Log access denied
+    if (site) {
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: 'unknown',
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'ip_extraction_failed',
+      });
+    }
+    
     return reply.code(403).send({
       error: 'Forbidden',
       reason: 'ip_extraction_failed',
@@ -49,6 +68,17 @@ export async function ipAccessControl(
   if (site.ip_denylist && site.ip_denylist.length > 0) {
     if (matchCIDR(clientIP, site.ip_denylist)) {
       request.log.info({ clientIP, reason: 'ip_denylist' }, 'Access denied');
+      
+      // Log access denied
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: anonymizeIP(clientIP),
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'ip_denylist',
+      });
+      
       return reply.code(403).send({
         error: 'Forbidden',
         reason: 'ip_denylist',
@@ -61,6 +91,17 @@ export async function ipAccessControl(
   if (site.ip_allowlist && site.ip_allowlist.length > 0) {
     if (!matchCIDR(clientIP, site.ip_allowlist)) {
       request.log.info({ clientIP, reason: 'ip_not_in_allowlist' }, 'Access denied');
+      
+      // Log access denied
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: anonymizeIP(clientIP),
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'ip_not_in_allowlist',
+      });
+      
       return reply.code(403).send({
         error: 'Forbidden',
         reason: 'ip_not_in_allowlist',
@@ -77,6 +118,21 @@ export async function ipAccessControl(
     const country = geoData?.countryCode;
     if (country && site.country_denylist.includes(country)) {
       request.log.info({ clientIP, country, reason: 'country_blocked' }, 'Access denied');
+      
+      // Log access denied
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: anonymizeIP(clientIP),
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'country_blocked',
+        ip_country: country,
+        ip_city: geoData?.city,
+        ip_lat: geoData?.latitude,
+        ip_lng: geoData?.longitude,
+      });
+      
       return reply.code(403).send({
         error: 'Forbidden',
         reason: 'country_blocked',
@@ -91,6 +147,21 @@ export async function ipAccessControl(
     const country = geoData?.countryCode;
     if (!country || !site.country_allowlist.includes(country)) {
       request.log.info({ clientIP, country, reason: 'country_not_allowed' }, 'Access denied');
+      
+      // Log access denied
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: anonymizeIP(clientIP),
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'country_not_allowed',
+        ip_country: country || undefined,
+        ip_city: geoData?.city,
+        ip_lat: geoData?.latitude,
+        ip_lng: geoData?.longitude,
+      });
+      
       return reply.code(403).send({
         error: 'Forbidden',
         reason: 'country_not_allowed',
@@ -106,6 +177,21 @@ export async function ipAccessControl(
     
     if (anonCheck.isVpn || anonCheck.isProxy || anonCheck.isHosting || anonCheck.isTor) {
       request.log.info({ clientIP, anonCheck, reason: 'vpn_proxy_detected' }, 'Access denied');
+      
+      // Log access denied
+      await accessLogService.log({
+        site_id: site.id,
+        ip_address: anonymizeIP(clientIP),
+        user_agent: request.headers['user-agent'] || null,
+        url: request.url,
+        allowed: false,
+        reason: 'vpn_proxy_detected',
+        ip_country: geoData?.countryCode,
+        ip_city: geoData?.city,
+        ip_lat: geoData?.latitude,
+        ip_lng: geoData?.longitude,
+      });
+      
       return reply.code(403).send({
         error: 'Forbidden',
         reason: 'vpn_proxy_detected',
@@ -115,6 +201,19 @@ export async function ipAccessControl(
     }
   }
 
-  // All checks passed - continue to route handler
+  // All checks passed - log successful access
+  await accessLogService.log({
+    site_id: site.id,
+    ip_address: anonymizeIP(clientIP),
+    user_agent: request.headers['user-agent'] || null,
+    url: request.url,
+    allowed: true,
+    reason: 'passed',
+    ip_country: geoData?.countryCode,
+    ip_city: geoData?.city,
+    ip_lat: geoData?.latitude,
+    ip_lng: geoData?.longitude,
+  });
+  
   request.log.debug({ clientIP }, 'IP access control passed');
 }
