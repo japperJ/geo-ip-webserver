@@ -1,60 +1,15 @@
 import Fastify from 'fastify';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import fastifyEnv from '@fastify/env';
-import fastifyPostgres from '@fastify/postgres';
-import fastifyRedis from '@fastify/redis';
-import fastifyCors from '@fastify/cors';
+import {
+  serializerCompiler,
+  validatorCompiler,
+  type ZodTypeProvider,
+} from 'fastify-type-provider-zod';
+import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import geoipPlugin from './plugins/geoip.js';
+import { pool } from './db/index.js';
+import { siteRoutes } from './routes/sites.js';
 import { existsSync } from 'fs';
-
-interface EnvConfig {
-  NODE_ENV: string;
-  HOST: string;
-  PORT: number;
-  LOG_LEVEL: string;
-  DATABASE_URL: string;
-  REDIS_HOST: string;
-  REDIS_PORT: number;
-}
-
-declare module 'fastify' {
-  interface FastifyInstance {
-    config: EnvConfig;
-  }
-}
-
-const envSchema = {
-  type: 'object',
-  required: ['DATABASE_URL', 'REDIS_HOST'],
-  properties: {
-    NODE_ENV: {
-      type: 'string',
-      default: 'development'
-    },
-    HOST: {
-      type: 'string',
-      default: '0.0.0.0'
-    },
-    PORT: {
-      type: 'integer',
-      default: 3000
-    },
-    LOG_LEVEL: {
-      type: 'string',
-      default: 'info'
-    },
-    DATABASE_URL: {
-      type: 'string'
-    },
-    REDIS_HOST: {
-      type: 'string'
-    },
-    REDIS_PORT: {
-      type: 'integer',
-      default: 6379
-    }
-  }
-};
 
 async function buildServer() {
   const server = Fastify({
@@ -63,31 +18,22 @@ async function buildServer() {
       transport: process.env.NODE_ENV === 'development' 
         ? { target: 'pino-pretty', options: { colorize: true } }
         : undefined
-    }
-  }).withTypeProvider<TypeBoxTypeProvider>();
+    },
+    trustProxy: true, // Required for X-Forwarded-For
+  }).withTypeProvider<ZodTypeProvider>();
 
-  // Register environment validation
-  await server.register(fastifyEnv, {
-    schema: envSchema,
-    dotenv: true
+  // Set validator and serializer compilers
+  server.setValidatorCompiler(validatorCompiler);
+  server.setSerializerCompiler(serializerCompiler);
+
+  // Register plugins
+  await server.register(cors, {
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true,
   });
 
-  // Register CORS
-  await server.register(fastifyCors, {
-    origin: true,
-    credentials: true
-  });
-
-  // Register PostgreSQL
-  await server.register(fastifyPostgres, {
-    connectionString: server.config.DATABASE_URL
-  });
-
-  // Register Redis
-  await server.register(fastifyRedis, {
-    host: server.config.REDIS_HOST,
-    port: server.config.REDIS_PORT,
-    closeClient: true
+  await server.register(helmet, {
+    contentSecurityPolicy: false, // Will configure in Phase 5
   });
 
   // Register GeoIP plugin (optional if databases not present)
@@ -101,17 +47,14 @@ async function buildServer() {
     server.log.warn('GeoIP databases not found - GeoIP functionality disabled');
   }
 
-  // Health check route
+  // Health check endpoint
   server.get('/health', async () => {
-    const dbCheck = await server.pg.query('SELECT 1 as ok');
-    const redisCheck = await server.redis.ping();
-    
-    return {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: dbCheck.rows[0].ok === 1 ? 'connected' : 'disconnected',
-      redis: redisCheck === 'PONG' ? 'connected' : 'disconnected'
-    };
+    try {
+      await pool.query('SELECT 1');
+      return { status: 'healthy', database: 'connected' };
+    } catch (error) {
+      return { status: 'unhealthy', database: 'disconnected' };
+    }
   });
 
   // Root route
@@ -119,9 +62,12 @@ async function buildServer() {
     return { 
       name: 'Geo-IP Webserver API',
       version: '1.0.0',
-      environment: server.config.NODE_ENV
+      environment: process.env.NODE_ENV || 'development'
     };
   });
+
+  // Register routes
+  await server.register(siteRoutes, { prefix: '/api' });
 
   // GeoIP lookup route (only if plugin loaded)
   if (existsSync(cityDbPath) && existsSync(countryDbPath)) {
@@ -142,6 +88,34 @@ async function buildServer() {
     });
   }
 
+  // Global error handler
+  server.setErrorHandler((error, request, reply) => {
+    server.log.error(error);
+
+    // Validation errors
+    if (error.validation) {
+      return reply.code(400).send({
+        error: 'Bad Request',
+        message: 'Validation failed',
+        details: error.validation,
+      });
+    }
+
+    // Database errors
+    if ((error as any).code === '23505') {
+      return reply.code(409).send({
+        error: 'Conflict',
+        message: 'Resource already exists',
+      });
+    }
+
+    // Default 500 error
+    return reply.code(500).send({
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred',
+    });
+  });
+
   return server;
 }
 
@@ -149,12 +123,11 @@ async function start() {
   try {
     const server = await buildServer();
     
-    const address = await server.listen({
-      port: server.config.PORT,
-      host: server.config.HOST
-    });
+    const port = parseInt(process.env.PORT || '3000');
+    const host = process.env.HOST || '0.0.0.0';
     
-    server.log.info(`Server listening on ${address}`);
+    await server.listen({ port, host });
+    server.log.info(`Server listening on http://${host}:${port}`);
   } catch (err) {
     console.error(err);
     process.exit(1);
