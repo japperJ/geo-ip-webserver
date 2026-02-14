@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { siteApi } from '@/lib/api';
 import { Loader2, Plus } from 'lucide-react';
 
 export function SitesPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -45,7 +47,7 @@ export function SitesPage() {
             Manage your geo-fenced sites and access control rules.
           </p>
         </div>
-        <Button>
+        <Button onClick={() => navigate('/sites/new')}>
           <Plus className="mr-2 h-4 w-4" />
           Create Site
         </Button>
@@ -74,7 +76,7 @@ export function SitesPage() {
           {data && data.sites.length === 0 && (
             <div className="text-center py-12 text-gray-400">
               <p>No sites found.</p>
-              <Button className="mt-4" variant="outline">
+              <Button className="mt-4" variant="outline" onClick={() => navigate('/sites/new')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create your first site
               </Button>
@@ -117,7 +119,11 @@ export function SitesPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => navigate(`/sites/${site.id}/edit`)}
+                        >
                           Edit
                         </Button>
                       </TableCell>
