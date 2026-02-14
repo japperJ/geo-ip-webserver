@@ -69,6 +69,7 @@ services:
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
       /usr/bin/mc mb myminio/site-assets --ignore-existing;
+      /usr/bin/mc mb myminio/screenshots --ignore-existing;
       /usr/bin/mc anonymous set download myminio/site-assets;
       exit 0;
       "

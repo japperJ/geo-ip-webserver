@@ -1,18 +1,26 @@
 import { Pool } from 'pg';
 import { CreateAccessLogInput, AccessLog } from '../models/AccessLog.js';
+import type { ScreenshotService } from './ScreenshotService.js';
 
 export class AccessLogService {
+  private screenshotService?: ScreenshotService;
+
   constructor(private db: Pool) {}
+
+  setScreenshotService(service: ScreenshotService) {
+    this.screenshotService = service;
+  }
 
   /**
    * Log access decision (allowed or denied)
    * Non-blocking: Uses setImmediate to log asynchronously
+   * Phase 4: Enqueues screenshot for blocked requests
    */
   async log(input: CreateAccessLogInput): Promise<void> {
     // Log asynchronously to avoid blocking request
     setImmediate(async () => {
       try {
-        await this.db.query(`
+        const result = await this.db.query(`
           INSERT INTO access_logs (
             site_id,
             timestamp,
@@ -29,6 +37,7 @@ export class AccessLogService {
             gps_lng,
             gps_accuracy
           ) VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING id, timestamp
         `, [
           input.site_id,
           input.ip_address, // Should be anonymized by caller
@@ -44,6 +53,25 @@ export class AccessLogService {
           input.gps_lng || null,
           input.gps_accuracy || null,
         ]);
+
+        // Phase 4: Enqueue screenshot for blocked requests
+        if (!input.allowed && this.screenshotService && input.url) {
+          const logId = result.rows[0].id;
+          const timestamp = result.rows[0].timestamp;
+
+          try {
+            await this.screenshotService.enqueueScreenshot({
+              siteId: input.site_id,
+              url: input.url,
+              reason: input.reason || 'blocked',
+              logId,
+              ipAddress: input.ip_address,
+              timestamp: new Date(timestamp).toISOString()
+            });
+          } catch (screenshotError) {
+            console.error('Failed to enqueue screenshot:', screenshotError);
+          }
+        }
       } catch (error) {
         // Log error but don't throw (already async, no way to handle)
         console.error('Failed to log access decision:', error);

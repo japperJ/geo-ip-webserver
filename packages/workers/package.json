@@ -1,0 +1,24 @@
+{
+  "name": "@geo-ip-webserver/workers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/screenshot-worker.ts",
+    "build": "tsc",
+    "start": "node dist/screenshot-worker.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.990.0",
+    "@aws-sdk/s3-request-presigner": "^3.990.0",
+    "bullmq": "^5.69.2",
+    "pino": "^8.21.0",
+    "pino-pretty": "^10.3.1",
+    "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.33",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}

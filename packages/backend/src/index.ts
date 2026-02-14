@@ -16,10 +16,13 @@ import { siteRoutes } from './routes/sites.js';
 import { accessLogRoutes } from './routes/accessLogs.js';
 import { authRoutes } from './routes/auth.js';
 import { siteRoleRoutes } from './routes/siteRoles.js';
+import { gdprRoutes } from './routes/gdpr.js';
 import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
 import { ipAccessControl } from './middleware/ipAccessControl.js';
 import { authenticateJWT } from './middleware/authenticateJWT.js';
 import { CacheService } from './services/CacheService.js';
+import { createScreenshotService } from './services/ScreenshotService.js';
+import { AccessLogService } from './services/AccessLogService.js';
 import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
@@ -83,6 +86,13 @@ async function buildServer() {
   const cacheService = new CacheService(server);
   server.decorate('cacheService', cacheService);
 
+  // Initialize screenshot service (Phase 4)
+  const screenshotService = createScreenshotService(server);
+  
+  // Initialize access log service and inject screenshot service
+  const accessLogService = new AccessLogService(pool);
+  accessLogService.setScreenshotService(screenshotService);
+
   // Register GeoIP plugin (optional if databases not present)
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
   const countryDbPath = process.env.GEOIP_COUNTRY_DB_PATH || './data/GeoLite2-Country.mmdb';
@@ -134,7 +144,7 @@ async function buildServer() {
     return { 
       name: 'Geo-IP Webserver API',
       version: '1.0.0',
-      phase: '3 - Multi-Site & RBAC',
+      phase: '4 - Artifacts & GDPR Compliance',
       environment: process.env.NODE_ENV || 'development'
     };
   });
@@ -144,6 +154,7 @@ async function buildServer() {
   await server.register(siteRoutes, { prefix: '/api' });
   await server.register(siteRoleRoutes, { prefix: '/api/sites' });
   await server.register(accessLogRoutes, { prefix: '/api' });
+  await server.register(gdprRoutes); // Phase 4: GDPR routes
 
   // Test route for IP access control (can be removed after testing)
   server.get('/test-protected', async (request) => {
