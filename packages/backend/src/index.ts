@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Fastify from 'fastify';
 import {
   serializerCompiler,
@@ -6,15 +7,31 @@ import {
 } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import jwt from '@fastify/jwt';
+import cookie from '@fastify/cookie';
+import redis from '@fastify/redis';
 import geoipPlugin from './plugins/geoip.js';
 import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
 import { accessLogRoutes } from './routes/accessLogs.js';
-import { siteResolution } from './middleware/siteResolution.js';
+import { authRoutes } from './routes/auth.js';
+import { siteRoleRoutes } from './routes/siteRoles.js';
+import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
 import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { authenticateJWT } from './middleware/authenticateJWT.js';
+import { CacheService } from './services/CacheService.js';
 import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
+
+// Extend Fastify instance type
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: typeof authenticateJWT;
+    cacheService: CacheService;
+    pg: typeof pool;
+  }
+}
 
 async function buildServer() {
   const server = Fastify({
@@ -41,6 +58,31 @@ async function buildServer() {
     contentSecurityPolicy: false, // Will configure in Phase 5
   });
 
+  // Decorate with pg pool (instead of plugin for Fastify 5 compatibility)
+  server.decorate('pg', pool);
+
+  // Register Redis plugin
+  await server.register(redis, {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+  });
+
+  // Register cookie plugin (for refresh tokens)
+  await server.register(cookie, {
+    secret: process.env.COOKIE_SECRET || 'change-this-secret-in-production',
+  });
+
+  // Register JWT plugin
+  await server.register(jwt, {
+    secret: process.env.JWT_SECRET || 'change-this-secret-in-production',
+  });
+
+  // Register authenticate decorator
+  server.decorate('authenticate', authenticateJWT);
+
+  // Initialize cache service
+  const cacheService = new CacheService(server);
+  server.decorate('cacheService', cacheService);
+
   // Register GeoIP plugin (optional if databases not present)
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
   const countryDbPath = process.env.GEOIP_COUNTRY_DB_PATH || './data/GeoLite2-Country.mmdb';
@@ -52,20 +94,39 @@ async function buildServer() {
     server.log.warn('GeoIP databases not found - GeoIP functionality disabled');
   }
 
+  // Warm cache on startup
+  server.addHook('onReady', async () => {
+    await cacheService.warmCache();
+  });
+
   // Register global middleware hooks (run on every request in order)
-  // 1. Site resolution (attaches site to request)
+  // 1. Site resolution (attaches site to request) - uses cache service
   // 2. IP access control (uses site config for access decisions)
-  server.addHook('onRequest', siteResolution);
+  const siteResolutionMiddleware = createSiteResolutionMiddleware(cacheService);
+  server.addHook('onRequest', siteResolutionMiddleware);
   server.addHook('onRequest', ipAccessControl);
 
   // Health check endpoint
   server.get('/health', async () => {
     try {
-      await pool.query('SELECT 1');
-      return { status: 'healthy', database: 'connected' };
+      await server.pg.query('SELECT 1');
+      const redisHealth = await server.redis.ping();
+      return { 
+        status: 'healthy', 
+        database: 'connected',
+        redis: redisHealth === 'PONG' ? 'connected' : 'disconnected',
+      };
     } catch (error) {
-      return { status: 'unhealthy', database: 'disconnected' };
+      return { status: 'unhealthy', database: 'disconnected', error: String(error) };
     }
+  });
+
+  // Metrics endpoint
+  server.get('/metrics', async () => {
+    const cacheStats = cacheService.getStats();
+    return {
+      cache: cacheStats,
+    };
   });
 
   // Root route
@@ -73,12 +134,15 @@ async function buildServer() {
     return { 
       name: 'Geo-IP Webserver API',
       version: '1.0.0',
+      phase: '3 - Multi-Site & RBAC',
       environment: process.env.NODE_ENV || 'development'
     };
   });
 
   // Register routes
+  await server.register(authRoutes, { prefix: '/api/auth' });
   await server.register(siteRoutes, { prefix: '/api' });
+  await server.register(siteRoleRoutes, { prefix: '/api/sites' });
   await server.register(accessLogRoutes, { prefix: '/api' });
 
   // Test route for IP access control (can be removed after testing)

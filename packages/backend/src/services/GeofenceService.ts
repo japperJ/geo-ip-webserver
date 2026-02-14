@@ -51,7 +51,54 @@ export class GeofenceService {
       const result = await (this.fastify as any).pg.query(query, [
         coords.lng,
         coords.lat,
-        JSON.stringify(center),
+        accuracyBufferKm * 1000, // Convert km to meters
+        JSON.stringify(polygon),
+      ]);
+
+      const isWithin = result.rows[0]?.within === true;
+
+      return {
+        allowed: isWithin,
+        reason: isWithin ? undefined : 'outside_geofence',
+      };
+    } catch (error) {
+      this.fastify.log.error({ error }, 'Polygon geofence check failed');
+      throw new Error('Geofence validation failed');
+    }
+  }
+
+  /**
+   * Check if GPS coordinates are within a radius geofence
+   */
+  async checkRadiusGeofence(
+    coords: GPSCoordinates,
+    center: Point,
+    radiusKm: number
+  ): Promise<GeofenceCheckResult> {
+    const accuracyBufferKm = coords.accuracy
+      ? (coords.accuracy * 1.5) / 1000
+      : 0;
+
+    const effectiveRadiusKm = radiusKm + accuracyBufferKm;
+
+    const query = `
+      SELECT ST_DWithin(
+        ST_MakePoint($1, $2)::geography,
+        ST_MakePoint($3, $4)::geography,
+        $5
+      ) as within,
+      ST_Distance(
+        ST_MakePoint($1, $2)::geography,
+        ST_MakePoint($3, $4)::geography
+      ) / 1000 as distance_km
+    `;
+
+    try {
+      const result = await (this.fastify as any).pg.query(query, [
+        coords.lng,
+        coords.lat,
+        center.coordinates[0],
+        center.coordinates[1],
         effectiveRadiusKm * 1000, // Convert to meters
       ]);
 

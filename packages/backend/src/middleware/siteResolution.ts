@@ -1,38 +1,48 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { SiteService } from '../services/SiteService.js';
-import { pool } from '../db/index.js';
-
-const siteService = new SiteService(pool);
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import type { CacheService } from '../services/CacheService.js';
 
 /**
- * Site resolution middleware (MVP: Single site mode)
+ * Site resolution middleware - Phase 3: Multi-Site
  * 
- * For MVP, we'll load the first enabled site from database.
- * In Phase 3 (Multi-Site), this will resolve by hostname.
+ * Resolves site by hostname with multi-layer caching (LRU + Redis + DB)
  */
-export async function siteResolution(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  // Skip for health check and admin API routes
-  if (request.url.startsWith('/health') || request.url.startsWith('/api/')) {
-    return;
-  }
+export function createSiteResolutionMiddleware(cacheService: CacheService) {
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    // Skip for health check and admin API routes
+    if (request.url.startsWith('/health') || 
+        request.url.startsWith('/api/') ||
+        request.url.startsWith('/metrics')) {
+      return;
+    }
 
-  // MVP: Load first enabled site
-  // TODO Phase 3: Resolve by request.hostname
-  const result = await siteService.list({ limit: 1 });
-  
-  if (result.sites.length === 0) {
-    request.log.error('No sites configured');
-    return reply.code(503).send({
-      error: 'Service Unavailable',
-      message: 'No sites configured',
-    });
-  }
+    // Get hostname from request
+    const hostname = request.hostname;
 
-  // Attach site to request
-  request.site = result.sites[0];
-  
-  request.log.debug({ siteId: request.site.id, siteName: request.site.name }, 'Site resolved');
+    if (!hostname) {
+      request.log.error('No hostname in request');
+      return reply.code(400).send({
+        error: 'Bad Request',
+        message: 'No hostname provided',
+      });
+    }
+
+    // Resolve site by hostname (with caching)
+    const site = await cacheService.getSiteByHostname(hostname);
+
+    if (!site) {
+      request.log.warn({ hostname }, 'Site not found for hostname');
+      return reply.code(404).send({
+        error: 'Not Found',
+        message: `No site configured for hostname: ${hostname}`,
+      });
+    }
+
+    // Attach site to request
+    request.site = site;
+
+    request.log.debug(
+      { siteId: site.id, siteName: site.name, hostname },
+      'Site resolved via cache'
+    );
+  };
 }
