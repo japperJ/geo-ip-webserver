@@ -1,0 +1,12 @@
+# Build output
+dist/
+
+# Environment
+.env
+
+# GeoIP databases
+data/
+*.mmdb
+
+# Coverage
+coverage/
