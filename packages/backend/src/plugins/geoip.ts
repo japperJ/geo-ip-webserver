@@ -13,8 +13,9 @@ const geoipPlugin: FastifyPluginAsync = async (fastify) => {
   
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
   const countryDbPath = process.env.GEOIP_COUNTRY_DB_PATH || './data/GeoLite2-Country.mmdb';
+  const anonDbPath = process.env.GEOIP_ANON_DB_PATH;
   
-  await geoip.initialize(cityDbPath, countryDbPath);
+  await geoip.initialize(cityDbPath, countryDbPath, anonDbPath);
   
   fastify.decorate('geoip', geoip);
 };

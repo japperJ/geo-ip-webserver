@@ -1,7 +1,8 @@
-import maxmind, { CityResponse, CountryResponse, Reader } from 'maxmind';
+import maxmind, { CityResponse, CountryResponse, Reader, AsnResponse } from 'maxmind';
 import { FastifyBaseLogger } from 'fastify';
+import { LRUCache } from 'lru-cache';
 
-interface GeoIPLocation {
+export interface GeoIPLocation {
   country?: string;
   countryCode?: string;
   city?: string;
@@ -11,28 +12,47 @@ interface GeoIPLocation {
   postalCode?: string;
 }
 
-interface CacheEntry {
-  data: GeoIPLocation;
-  timestamp: number;
+export interface AnonymousIPCheck {
+  isVpn: boolean;
+  isProxy: boolean;
+  isHosting: boolean;
+  isTor: boolean;
 }
 
 export class GeoIPService {
   private cityReader: Reader<CityResponse> | null = null;
   private countryReader: Reader<CountryResponse> | null = null;
-  private cache: Map<string, CacheEntry> = new Map();
-  private readonly CACHE_TTL = 3600000; // 1 hour in ms
-  private readonly MAX_CACHE_SIZE = 10000; // LRU cache size
+  private anonReader: Reader<AsnResponse> | null = null;
+  
+  // LRU cache: 10,000 entries, 5 minute TTL
+  private cache = new LRUCache<string, GeoIPLocation>({
+    max: 10000,
+    ttl: 1000 * 60 * 5, // 5 minutes
+  });
+  
   private logger: FastifyBaseLogger;
 
   constructor(logger: FastifyBaseLogger) {
     this.logger = logger;
   }
 
-  async initialize(cityDbPath: string, countryDbPath: string): Promise<void> {
+  async initialize(cityDbPath: string, countryDbPath: string, anonDbPath?: string): Promise<void> {
     try {
       this.cityReader = await maxmind.open<CityResponse>(cityDbPath);
       this.countryReader = await maxmind.open<CountryResponse>(countryDbPath);
       this.logger.info('GeoIP databases loaded successfully');
+      
+      // Load anonymous IP database (optional)
+      if (anonDbPath) {
+        try {
+          this.anonReader = await maxmind.open<AsnResponse>(anonDbPath);
+          this.logger.info('GeoIP anonymous IP database loaded successfully');
+        } catch (error) {
+          this.logger.warn({ error }, 'GeoIP anonymous IP database not found - VPN detection disabled');
+        }
+      } else {
+        this.logger.info('GeoIP anonymous IP database path not provided - VPN detection disabled');
+      }
     } catch (error) {
       this.logger.error({ error }, 'Failed to load GeoIP databases');
       throw error;
@@ -42,16 +62,16 @@ export class GeoIPService {
   lookup(ip: string): GeoIPLocation | null {
     // Check cache first
     const cached = this.cache.get(ip);
-    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
-      return cached.data;
+    if (cached) {
+      return cached;
     }
 
     // Perform lookup
     const location = this.performLookup(ip);
     
-    // Cache result (LRU eviction)
+    // Cache result
     if (location) {
-      this.cacheResult(ip, location);
+      this.cache.set(ip, location);
     }
 
     return location;
@@ -89,26 +109,47 @@ export class GeoIPService {
     }
   }
 
-  private cacheResult(ip: string, location: GeoIPLocation): void {
-    // LRU eviction: remove oldest entry if cache is full
-    if (this.cache.size >= this.MAX_CACHE_SIZE) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) {
-        this.cache.delete(firstKey);
-      }
+  /**
+   * Check if IP is from VPN/proxy/hosting/Tor
+   * @param ip IP address
+   * @returns Anonymous IP check results
+   */
+  isAnonymous(ip: string): AnonymousIPCheck {
+    // If anonymous IP database not loaded, return all false
+    if (!this.anonReader) {
+      return {
+        isVpn: false,
+        isProxy: false,
+        isHosting: false,
+        isTor: false,
+      };
     }
 
-    this.cache.set(ip, {
-      data: location,
-      timestamp: Date.now()
-    });
+    try {
+      const result = this.anonReader.get(ip) as any;
+
+      return {
+        isVpn: result?.is_anonymous_vpn || false,
+        isProxy: result?.is_anonymous_proxy || false,
+        isHosting: result?.is_hosting_provider || false,
+        isTor: result?.is_tor_exit_node || false,
+      };
+    } catch (error) {
+      this.logger.error({ error, ip }, 'Anonymous IP check failed');
+      return {
+        isVpn: false,
+        isProxy: false,
+        isHosting: false,
+        isTor: false,
+      };
+    }
   }
 
   getCacheStats() {
     return {
       size: this.cache.size,
-      maxSize: this.MAX_CACHE_SIZE,
-      ttl: this.CACHE_TTL
+      max: this.cache.max,
+      ttl: this.cache.ttl,
     };
   }
 

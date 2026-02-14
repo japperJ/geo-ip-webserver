@@ -9,6 +9,9 @@ import helmet from '@fastify/helmet';
 import geoipPlugin from './plugins/geoip.js';
 import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
+import { siteResolution } from './middleware/siteResolution.js';
+import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
 
 async function buildServer() {
@@ -47,6 +50,12 @@ async function buildServer() {
     server.log.warn('GeoIP databases not found - GeoIP functionality disabled');
   }
 
+  // Register global middleware hooks (run on every request in order)
+  // 1. Site resolution (attaches site to request)
+  // 2. IP access control (uses site config for access decisions)
+  server.addHook('onRequest', siteResolution);
+  server.addHook('onRequest', ipAccessControl);
+
   // Health check endpoint
   server.get('/health', async () => {
     try {
@@ -68,6 +77,15 @@ async function buildServer() {
 
   // Register routes
   await server.register(siteRoutes, { prefix: '/api' });
+
+  // Test route for IP access control (can be removed after testing)
+  server.get('/test-protected', async (request) => {
+    return {
+      message: 'Access granted!',
+      clientIP: getClientIP(request),
+      site: request.site?.name,
+    };
+  });
 
   // GeoIP lookup route (only if plugin loaded)
   if (existsSync(cityDbPath) && existsSync(countryDbPath)) {
