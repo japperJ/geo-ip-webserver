@@ -1,20 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add JWT token to all requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import { api } from './api';
 
 // Access Log types
 export interface AccessLog {
