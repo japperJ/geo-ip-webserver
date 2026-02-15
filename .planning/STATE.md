@@ -2,9 +2,9 @@
 
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
-**Last Updated:** 2026-02-14  
-**Current Phase:** Phase 1 - MVP - IP Access Control  
-**Project Status:** 🟡 In Progress (Phase 0 Complete)
+**Last Updated:** 2026-02-15  
+**Current Phase:** Phase B - Content Management (Plan 1 Backend Complete)  
+**Project Status:** 🟡 In Progress (Phase A complete, Phase B Plan 1 complete)
 
 ---
 
@@ -303,6 +303,17 @@ Week  | Remaining Tasks | Target Remaining | Status
 
 ## Change Log
 
+### 2026-02-15 (Phase B Plan 1 Backend Complete)
+- **[COMPLETE]** Phase B Plan 1 (backend scope: CONTENT-001/002/003 + blockers)
+- **[IMPLEMENTATION]** Added `ContentService` with site-scoped list/upload/delete/presign operations
+- **[IMPLEMENTATION]** Added content routes in `packages/backend/src/routes/content.ts` and registered in backend startup
+- **[SECURITY]** Disabled anonymous `site-assets` downloads in `docker-compose.dev.yml` and `docker-compose.yml`
+- **[SECURITY]** Verified direct anonymous object access returns `403 AccessDenied`
+- **[PIPELINE]** Added `/s/:siteId/*` path-based site resolution before IP/GPS middleware for public content route protection
+- **[QUALITY]** Added route/service/middleware tests for new functionality and param compatibility (`:siteId` + `:id`)
+- **[VERIFICATION]** Backend tests passing and backend build successful
+- **[NEXT]** Phase B Plan 2 (frontend content UI) remains pending
+
 ### 2026-02-14 (Phase 0 Complete)
 - **[COMPLETE]** Phase 0: Foundation & Architecture Setup (9/9 tasks - 100%)
 - **[MILESTONE]** All Docker services running and healthy (PostgreSQL + PostGIS 3.4, Redis 7, MinIO)
@@ -346,10 +357,10 @@ Week  | Remaining Tasks | Target Remaining | Status
 ## Next Steps
 
 ### Immediate Actions (This Week)
-1. **Resolve critical decisions** (GPS accuracy threshold, data retention, VPN policy, access log anonymization)
-2. **Schedule project kickoff meeting** with stakeholders
-3. **Begin Phase 0** (Foundation & Architecture Setup)
-4. **Setup development environment** (Docker Compose stack)
+1. **Execute Phase B Plan 2** (frontend content UI: list/upload/download/delete)
+2. **Validate end-to-end** content flow from frontend through protected public endpoint
+3. **Keep site-assets bucket private** and preserve gated serving model (no anonymous direct fetch)
+4. **Update roadmap/state metrics** after Plan 2 completion
 
 ### Phase 0 Target (Weeks 1-2)
 1. Complete DEV-001 to DEV-009 (9 tasks)
