@@ -8,11 +8,18 @@ declare module 'fastify' {
 }
 
 export async function requireSiteAccess(
-  request: FastifyRequest<{ Params: { id: string } }>,
+  request: FastifyRequest<{ Params: { id?: string; siteId?: string } }>,
   reply: FastifyReply
 ): Promise<void> {
   const user = request.user as JWTPayload | undefined;
-  const siteId = request.params.id;
+  const siteId = request.params.siteId || request.params.id;
+
+  if (!siteId) {
+    return reply.status(400).send({
+      error: 'Bad Request',
+      message: 'Site ID is required',
+    });
+  }
 
   if (!user) {
     return reply.status(401).send({
@@ -28,7 +35,7 @@ export async function requireSiteAccess(
   }
 
   // Check if user has access to this site
-  const siteRole = user.sites[siteId];
+  const siteRole = user.sites?.[siteId];
   if (!siteRole) {
     return reply.status(403).send({
       error: 'Forbidden',
