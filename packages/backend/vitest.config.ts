@@ -5,11 +5,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    poolMatchGlobs: [['**/*.test.ts', 'forks']],
+    // Run tests serially to avoid parallel DB access issues
+    fileParallelism: false,
+    // Global setup runs once before all tests
+    globalSetup: ['./src/tests/globalSetup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
