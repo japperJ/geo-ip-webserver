@@ -1,0 +1,145 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - heading "Geo-IP Admin" [level=1] [ref=e7]
+    - navigation [ref=e8]:
+      - link "Sites" [ref=e9] [cursor=pointer]:
+        - /url: /sites
+        - img [ref=e10]
+        - text: Sites
+      - link "Access Logs" [ref=e15] [cursor=pointer]:
+        - /url: /logs
+        - img [ref=e16]
+        - text: Access Logs
+    - generic [ref=e20]:
+      - paragraph [ref=e21]: "Logged in as: admin@test.local"
+      - button "Logout" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Logout
+      - paragraph [ref=e26]: Phase 1 MVP - v1.0.0
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - heading "Sites" [level=1] [ref=e32]
+          - paragraph [ref=e33]: Manage your geo-fenced sites and access control rules.
+        - button "Create Site" [ref=e34] [cursor=pointer]:
+          - img [ref=e35]
+          - text: Create Site
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - heading "All Sites" [level=3] [ref=e38]
+          - paragraph [ref=e39]: A list of all sites configured in the system.
+        - table [ref=e43]:
+          - rowgroup [ref=e44]:
+            - row "Name Slug Hostname Access Mode Status Actions" [ref=e45]:
+              - columnheader "Name" [ref=e46]
+              - columnheader "Slug" [ref=e47]
+              - columnheader "Hostname" [ref=e48]
+              - columnheader "Access Mode" [ref=e49]
+              - columnheader "Status" [ref=e50]
+              - columnheader "Actions" [ref=e51]
+          - rowgroup [ref=e52]:
+            - row "NYC Radius Test nyc-radius-api-test-1771178377488 nyc-api-test-1771178377488.example.com geo_only Inactive Edit" [ref=e53]:
+              - cell "NYC Radius Test" [ref=e54]
+              - cell "nyc-radius-api-test-1771178377488" [ref=e55]
+              - cell "nyc-api-test-1771178377488.example.com" [ref=e56]
+              - cell "geo_only" [ref=e57]:
+                - generic [ref=e58]: geo_only
+              - cell "Inactive" [ref=e59]:
+                - generic [ref=e60]: Inactive
+              - cell "Edit" [ref=e61]:
+                - button "Edit" [ref=e62] [cursor=pointer]
+            - row "Polygon Geofence Test geo-polygon-test-1771178293979 polygon-test-1771178293979.example.com geo_only Inactive Edit" [ref=e63]:
+              - cell "Polygon Geofence Test" [ref=e64]
+              - cell "geo-polygon-test-1771178293979" [ref=e65]
+              - cell "polygon-test-1771178293979.example.com" [ref=e66]
+              - cell "geo_only" [ref=e67]:
+                - generic [ref=e68]: geo_only
+              - cell "Inactive" [ref=e69]:
+                - generic [ref=e70]: Inactive
+              - cell "Edit" [ref=e71]:
+                - button "Edit" [ref=e72] [cursor=pointer]
+            - row "Radius Geofence Test geo-radius-test-1771178293665 radius-test-1771178293665.example.com geo_only Inactive Edit" [ref=e73]:
+              - cell "Radius Geofence Test" [ref=e74]
+              - cell "geo-radius-test-1771178293665" [ref=e75]
+              - cell "radius-test-1771178293665.example.com" [ref=e76]
+              - cell "geo_only" [ref=e77]:
+                - generic [ref=e78]: geo_only
+              - cell "Inactive" [ref=e79]:
+                - generic [ref=e80]: Inactive
+              - cell "Edit" [ref=e81]:
+                - button "Edit" [ref=e82] [cursor=pointer]
+            - row "NYC Radius Test nyc-radius-api-test-1771178293841 nyc-api-test-1771178293841.example.com geo_only Inactive Edit" [ref=e83]:
+              - cell "NYC Radius Test" [ref=e84]
+              - cell "nyc-radius-api-test-1771178293841" [ref=e85]
+              - cell "nyc-api-test-1771178293841.example.com" [ref=e86]
+              - cell "geo_only" [ref=e87]:
+                - generic [ref=e88]: geo_only
+              - cell "Inactive" [ref=e89]:
+                - generic [ref=e90]: Inactive
+              - cell "Edit" [ref=e91]:
+                - button "Edit" [ref=e92] [cursor=pointer]
+            - row "San Francisco Downtown Test sf-polygon-api-test-1771178293692 sf-api-test-1771178293692.example.com geo_only Inactive Edit" [ref=e93]:
+              - cell "San Francisco Downtown Test" [ref=e94]
+              - cell "sf-polygon-api-test-1771178293692" [ref=e95]
+              - cell "sf-api-test-1771178293692.example.com" [ref=e96]
+              - cell "geo_only" [ref=e97]:
+                - generic [ref=e98]: geo_only
+              - cell "Inactive" [ref=e99]:
+                - generic [ref=e100]: Inactive
+              - cell "Edit" [ref=e101]:
+                - button "Edit" [ref=e102] [cursor=pointer]
+            - row "Polygon Geofence Test geo-polygon-test-1771177885795 polygon-test-1771177885795.example.com geo_only Inactive Edit" [ref=e103]:
+              - cell "Polygon Geofence Test" [ref=e104]
+              - cell "geo-polygon-test-1771177885795" [ref=e105]
+              - cell "polygon-test-1771177885795.example.com" [ref=e106]
+              - cell "geo_only" [ref=e107]:
+                - generic [ref=e108]: geo_only
+              - cell "Inactive" [ref=e109]:
+                - generic [ref=e110]: Inactive
+              - cell "Edit" [ref=e111]:
+                - button "Edit" [ref=e112] [cursor=pointer]
+            - row "Radius Geofence Test geo-radius-test-1771177885459 radius-test-1771177885459.example.com geo_only Inactive Edit" [ref=e113]:
+              - cell "Radius Geofence Test" [ref=e114]
+              - cell "geo-radius-test-1771177885459" [ref=e115]
+              - cell "radius-test-1771177885459.example.com" [ref=e116]
+              - cell "geo_only" [ref=e117]:
+                - generic [ref=e118]: geo_only
+              - cell "Inactive" [ref=e119]:
+                - generic [ref=e120]: Inactive
+              - cell "Edit" [ref=e121]:
+                - button "Edit" [ref=e122] [cursor=pointer]
+            - row "localhost localhost localhost disabled Inactive Edit" [ref=e123]:
+              - cell "localhost" [ref=e124]
+              - cell "localhost" [ref=e125]
+              - cell "localhost" [ref=e126]
+              - cell "disabled" [ref=e127]:
+                - generic [ref=e128]: disabled
+              - cell "Inactive" [ref=e129]:
+                - generic [ref=e130]: Inactive
+              - cell "Edit" [ref=e131]:
+                - button "Edit" [ref=e132] [cursor=pointer]
+            - row "test test test101.hostme.dk ip_and_geo Inactive Edit" [ref=e133]:
+              - cell "test" [ref=e134]
+              - cell "test" [ref=e135]
+              - cell "test101.hostme.dk" [ref=e136]
+              - cell "ip_and_geo" [ref=e137]:
+                - generic [ref=e138]: ip_and_geo
+              - cell "Inactive" [ref=e139]:
+                - generic [ref=e140]: Inactive
+              - cell "Edit" [ref=e141]:
+                - button "Edit" [ref=e142] [cursor=pointer]
+            - row "San Francisco Downtown Test sf-downtown disabled Inactive Edit" [ref=e143]:
+              - cell "San Francisco Downtown Test" [ref=e144]
+              - cell "sf-downtown" [ref=e145]
+              - cell [ref=e146]
+              - cell "disabled" [ref=e147]:
+                - generic [ref=e148]: disabled
+              - cell "Inactive" [ref=e149]:
+                - generic [ref=e150]: Inactive
+              - cell "Edit" [ref=e151]:
+                - button "Edit" [ref=e152] [cursor=pointer]
+```

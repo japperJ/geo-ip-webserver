@@ -131,11 +131,47 @@ test.describe('Geo-Fencing', () => {
     expect(currentUrl).toMatch(/\/sites/);
   });
 
-  test('should validate GPS coordinates against geofence via API', async ({ request }) => {
+  test('should validate GPS coordinates against geofence via API', async ({ request, page }) => {
     const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
     
-    // Use the SF polygon test site we created earlier
-    const siteId = '51bc16ce-5bea-4d92-9161-8fdae6cd37f4';
+    // Get auth token from page localStorage (need to navigate first)
+    await page.goto('/');
+    const authToken = await page.evaluate(() => localStorage.getItem('authToken'));
+    
+    // Create a test site with SF polygon geofence
+    const timestamp = Date.now();
+    const createResponse = await request.post(`${baseURL}/api/sites`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+      data: {
+        slug: `sf-polygon-api-test-${timestamp}`,
+        name: 'San Francisco Downtown Test',
+        hostname: `sf-api-test-${timestamp}.example.com`,
+        access_mode: 'geo_only',
+        geofence_type: 'polygon',
+        geofence_polygon: {
+          type: 'Polygon',
+          coordinates: [[
+            [-122.420, 37.775],
+            [-122.410, 37.775],
+            [-122.410, 37.783],
+            [-122.420, 37.783],
+            [-122.420, 37.775]
+          ]]
+        }
+      }
+    });
+    
+    if (!createResponse.ok()) {
+      const errorText = await createResponse.text();
+      console.log('[SF Polygon Test] Failed to create site:', createResponse.status(), errorText);
+    }
+    
+    expect(createResponse.ok()).toBeTruthy();
+    const site = await createResponse.json();
+    console.log('[SF Polygon Test] Created site:', site);
+    const siteId = site.id;
     
     // Test location inside SF polygon (should be allowed)
     const insideResponse = await request.post(`${baseURL}/api/sites/${siteId}/validate-location`, {
@@ -145,6 +181,11 @@ test.describe('Geo-Fencing', () => {
         gps_accuracy: 10
       }
     });
+    
+    if (!insideResponse.ok()) {
+      const errorText = await insideResponse.text();
+      console.log('[SF Polygon Test] Validation failed:', insideResponse.status(), errorText);
+    }
     
     expect(insideResponse.ok()).toBeTruthy();
     const insideData = await insideResponse.json();
@@ -166,11 +207,42 @@ test.describe('Geo-Fencing', () => {
     expect(outsideData.reason).toContain('outside');
   });
 
-  test('should validate GPS coordinates against radius geofence via API', async ({ request }) => {
+  test('should validate GPS coordinates against radius geofence via API', async ({ request, page }) => {
     const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
     
-    // Use the NYC radius test site we created earlier
-    const siteId = 'b606eeb7-7d7a-4f9d-910d-2e7e5fa330cf';
+    // Get auth token from page localStorage
+    await page.goto('/');
+    const authToken = await page.evaluate(() => localStorage.getItem('authToken'));
+    
+    // Create a test site with NYC radius geofence
+    const timestamp = Date.now();
+    const createResponse = await request.post(`${baseURL}/api/sites`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+      data: {
+        slug: `nyc-radius-api-test-${timestamp}`,
+        name: 'NYC Radius Test',
+        hostname: `nyc-api-test-${timestamp}.example.com`,
+        access_mode: 'geo_only',
+        geofence_type: 'radius',
+        geofence_center: {
+          type: 'Point',
+          coordinates: [-74.0060, 40.7128]  // NYC coordinates (lng, lat)
+        },
+        geofence_radius: 5000  // 5km radius
+      }
+    });
+    
+    if (!createResponse.ok()) {
+      const errorText = await createResponse.text();
+      console.log('[NYC Radius Test] Failed to create site:', createResponse.status(), errorText);
+    }
+    
+    expect(createResponse.ok()).toBeTruthy();
+    const site = await createResponse.json();
+    console.log('[NYC Radius Test] Created site:', site);
+    const siteId = site.id;
     
     // Test location at center (should be allowed)
     const centerResponse = await request.post(`${baseURL}/api/sites/${siteId}/validate-location`, {
@@ -181,8 +253,14 @@ test.describe('Geo-Fencing', () => {
       }
     });
     
+    if (!centerResponse.ok()) {
+      const errorText = await centerResponse.text();
+      console.log('[NYC Radius Test] Validation failed:', centerResponse.status(), errorText);
+    }
+    
     expect(centerResponse.ok()).toBeTruthy();
     const centerData = await centerResponse.json();
+    console.log('[NYC Radius Test] Center validation response:', JSON.stringify(centerData, null, 2));
     expect(centerData.allowed).toBe(true);
     expect(centerData.distance_km).toBeLessThan(1);
     
@@ -207,9 +285,10 @@ test.describe('Geo-Fencing', () => {
     
     const timestamp = Date.now();
     const slug = `geo-edit-test-${timestamp}`;
+    const siteName = `Geofence Edit Test ${timestamp}`;  // Use unique name with timestamp
     
     await page.locator('#slug').fill(slug);
-    await page.locator('#name').fill('Geofence Edit Test');
+    await page.locator('#name').fill(siteName);
     await page.locator('#hostname').fill(`edit-test-${timestamp}.example.com`);
     
     await page.getByRole('combobox').first().click();
@@ -246,8 +325,10 @@ test.describe('Geo-Fencing', () => {
     await page.goto('/sites');
     await page.waitForLoadState('networkidle');
     
-    // Find and click the edit button for our site
-    const siteRow = page.getByRole('row').filter({ hasText: 'Geofence Edit Test' }).first();
+    // Wait for the table to load and find our site - use the unique timestamp name
+    const siteRow = page.getByRole('row').filter({ hasText: siteName }).first();
+    await expect(siteRow).toBeVisible({ timeout: 10000 });  // Wait up to 10s for row to appear
+    
     await siteRow.getByRole('button', { name: 'Edit' }).click();
     
     // Should show edit page with map

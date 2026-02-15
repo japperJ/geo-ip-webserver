@@ -34,7 +34,12 @@ export interface UserSiteRole {
 }
 
 export class AuthService {
-  constructor(private fastify: FastifyInstance) {}
+  private jwtExpiration: string;
+
+  constructor(private fastify: FastifyInstance) {
+    // Use JWT_EXPIRATION from env or default to 15m
+    this.jwtExpiration = process.env.JWT_EXPIRATION || '15m';
+  }
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -100,7 +105,7 @@ export class AuthService {
       sites[row.site_id] = row.role;
     }
 
-    // Generate access token (15min)
+    // Generate access token
     const accessToken = this.fastify.jwt.sign(
       {
         userId: user.id,
@@ -108,7 +113,7 @@ export class AuthService {
         role: user.global_role,
         sites,
       },
-      { expiresIn: '15m' }
+      { expiresIn: this.jwtExpiration }
     );
 
     // Create refresh token (7 days)
@@ -189,7 +194,7 @@ export class AuthService {
         role: user.global_role,
         sites,
       },
-      { expiresIn: '15m' }
+      { expiresIn: this.jwtExpiration }
     );
 
     return accessToken;
@@ -208,7 +213,14 @@ export class AuthService {
       [userId]
     );
 
-    return result.rows[0] || null;
+    const user = result.rows[0];
+    if (!user) return null;
+
+    // Map global_role to role for frontend compatibility
+    return {
+      ...user,
+      role: user.global_role,
+    } as any;
   }
 
   async grantSiteRole(

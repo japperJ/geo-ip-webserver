@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "authToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTA4ODg4OSwiZXhwIjoxNzcxMDg5Nzg5fQ.Z-ZMwPMeerN3ci6xFt6jx1NGVqguH5XvUIxx_1DiAkg",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTE3ODQxMiwiZXhwIjoxNzcxMTgyMDEyfQ.9wpy4PCY0FCHuHCGrHGG3LNFWMaZoEOt2GHcfrtZdMU",
       "domain": "localhost",
       "path": "/",
-      "expires": 1771175289,
+      "expires": 1771264812,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -13,11 +13,15 @@
   ],
   "origins": [
     {
-      "origin": "http://localhost:90",
+      "origin": "http://localhost:8080",
       "localStorage": [
         {
           "name": "authToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTA4ODg4OSwiZXhwIjoxNzcxMDg5Nzg5fQ.Z-ZMwPMeerN3ci6xFt6jx1NGVqguH5XvUIxx_1DiAkg"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTE3ODQxMiwiZXhwIjoxNzcxMTgyMDEyfQ.9wpy4PCY0FCHuHCGrHGG3LNFWMaZoEOt2GHcfrtZdMU"
+        },
+        {
+          "name": "user",
+          "value": "{\"id\":\"9501d76e-9e90-4109-8b75-362d61f224fd\",\"email\":\"admin@test.local\",\"global_role\":\"super_admin\",\"created_at\":\"2026-02-14T16:19:42.069Z\",\"updated_at\":\"2026-02-14T16:19:42.069Z\",\"deleted_at\":null,\"role\":\"super_admin\"}"
         }
       ]
     }
