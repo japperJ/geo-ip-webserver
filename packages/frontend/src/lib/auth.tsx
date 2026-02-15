@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setAuthToken as setApiAuthToken } from './api';
+import { setAuthToken as setApiAuthToken, api } from './api';
+import axios from 'axios';
 
 interface User {
   id: string;
@@ -32,20 +33,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedUser) {
+    // Try to refresh access token from HttpOnly cookie on mount
+    const refreshToken = async () => {
       try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
+        // Call refresh endpoint with credentials (sends HttpOnly cookie)
+        const response = await axios.post('/api/auth/refresh', {}, {
+          withCredentials: true, // Critical: sends refresh cookie
+        });
+
+        if (response.data.accessToken && response.data.user) {
+          // Restore access token and user state
+          setToken(response.data.accessToken);
+          setUser(response.data.user);
+        } else {
+          // Invalid response - clear state
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('user');
+        }
       } catch (error) {
-        console.error('Failed to parse user from localStorage:', error);
+        // Refresh failed - user needs to log in again
+        // Don't log error (expected when not logged in)
+        setUser(null);
+        setToken(null);
         localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-    }
-    
-    setLoading(false);
+    };
+
+    refreshToken();
   }, []);
 
   const logout = () => {
