@@ -8,11 +8,12 @@ declare module 'fastify' {
 }
 
 export async function requireSiteAccess(
-  request: FastifyRequest<{ Params: { id?: string; siteId?: string } }>,
+  request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
   const user = request.user as JWTPayload | undefined;
-  const siteId = request.params.siteId || request.params.id;
+  const params = (request.params || {}) as { id?: string; siteId?: string };
+  const siteId = params.siteId || params.id;
 
   if (!siteId) {
     return reply.status(400).send({

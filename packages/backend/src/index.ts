@@ -20,6 +20,7 @@ import { accessLogRoutes } from './routes/accessLogs.js';
 import { authRoutes } from './routes/auth.js';
 import { siteRoleRoutes } from './routes/siteRoles.js';
 import { gdprRoutes } from './routes/gdpr.js';
+import { contentRoutes } from './routes/content.js';
 import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
 import { ipAccessControl } from './middleware/ipAccessControl.js';
 import { gpsAccessControl } from './middleware/gpsAccessControl.js';
@@ -28,9 +29,11 @@ import { CacheService } from './services/CacheService.js';
 import { createScreenshotService } from './services/ScreenshotService.js';
 import { GeofenceService } from './services/GeofenceService.js';
 import { AccessLogService } from './services/AccessLogService.js';
+import { SiteService } from './services/SiteService.js';
 import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
+import { z } from 'zod';
 
 // Extend Fastify instance type
 declare module 'fastify' {
@@ -137,6 +140,7 @@ async function buildServer() {
   
   // Initialize geofence service (Phase 2)
   const geofenceService = new GeofenceService(server);
+  const siteService = new SiteService(pool);
 
   // Register GeoIP plugin (optional if databases not present)
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
@@ -156,10 +160,43 @@ async function buildServer() {
 
   // Register global middleware hooks (run on every request in order)
   // 1. Site resolution (attaches site to request) - uses cache service
-  // 2. IP access control (uses site config for access decisions)
-  // 3. GPS access control (validates GPS coordinates and geofencing)
+  // 2. Path-based site resolution for /s/:siteId/*
+  // 3. IP access control (uses site config for access decisions)
+  // 4. GPS access control (validates GPS coordinates and geofencing)
   const siteResolutionMiddleware = createSiteResolutionMiddleware(cacheService);
   server.addHook('onRequest', siteResolutionMiddleware);
+  server.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+
+    if (!pathname.startsWith('/s/')) {
+      return;
+    }
+
+    if (request.site) {
+      return;
+    }
+
+    const [, siteId] = pathname.split('/').filter(Boolean);
+    const parsed = z.string().uuid().safeParse(siteId);
+
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'Bad Request',
+        message: 'Invalid siteId parameter',
+      });
+    }
+
+    const site = await siteService.getById(parsed.data);
+
+    if (!site || !site.enabled) {
+      return reply.code(404).send({
+        error: 'Not Found',
+        message: 'Site not found',
+      });
+    }
+
+    request.site = site;
+  });
   server.addHook('onRequest', ipAccessControl);
   
   // GPS access control middleware wrapper
@@ -238,6 +275,7 @@ async function buildServer() {
   await server.register(siteRoleRoutes, { prefix: '/api/sites' });
   await server.register(accessLogRoutes, { prefix: '/api' });
   await server.register(gdprRoutes); // Phase 4: GDPR routes
+  await server.register(contentRoutes);
 
   // Test route for IP access control (can be removed after testing)
   server.get('/test-protected', async (request) => {
