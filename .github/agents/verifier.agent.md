@@ -1,7 +1,7 @@
 ---
 name: Verifier
 description: JP Goal-backward verification of phase outcomes and cross-phase integration. Task completion ≠ Goal achievement.
-model: Claude Sonnet 4.5 (copilot)
+model: GPT-5.3-codex (copilot)
 tools: ['vscode', 'execute', 'read', 'edit', 'search', 'memory']
 ---
 
