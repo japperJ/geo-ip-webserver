@@ -1,5 +1,14 @@
 import axios from 'axios';
 
+// In-memory token storage (not localStorage for security)
+let currentAuthToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
+};
+
+export const getAuthToken = () => currentAuthToken;
+
 export const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -9,7 +18,7 @@ export const api = axios.create({
 
 // Add JWT token to all requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

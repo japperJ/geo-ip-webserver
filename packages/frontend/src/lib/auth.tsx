@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setAuthToken as setApiAuthToken } from './api';
 
 interface User {
   id: string;
@@ -9,7 +10,9 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   setUser: (user: User | null) => void;
+  setToken: (token: string | null) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -18,27 +21,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Custom setToken that also updates the API client
+  const setToken = (newToken: string | null) => {
+    setTokenState(newToken);
+    setApiAuthToken(newToken);
+  };
 
   useEffect(() => {
     // Check for stored user on mount
     const storedUser = localStorage.getItem('user');
-    console.log('AuthProvider mounted - checking localStorage');
-    console.log('storedUser raw:', storedUser);
     
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-        console.log('Parsed user:', parsed);
-        console.log('Has role?', 'role' in parsed, 'Value:', parsed.role);
         setUser(parsed);
       } catch (error) {
         console.error('Failed to parse user from localStorage:', error);
         localStorage.removeItem('user');
       }
-    } else {
-      console.log('No user in localStorage');
     }
     
     setLoading(false);
@@ -46,13 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('authToken');
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, setUser, setToken, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

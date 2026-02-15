@@ -13,7 +13,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { setUser, setToken } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -27,9 +27,9 @@ export function LoginPage() {
       });
 
       if (response.data.user && response.data.accessToken) {
-        // Store JWT token for API requests
-        localStorage.setItem('authToken', response.data.accessToken);
-        // Store user data
+        // Store JWT token in memory (not localStorage for security)
+        setToken(response.data.accessToken);
+        // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(response.data.user));
         // Update auth context
         setUser(response.data.user);
