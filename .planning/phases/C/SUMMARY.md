@@ -5,6 +5,8 @@ status: complete
 tasks_completed: 5/5
 commits: [0bc1d29, 404255d, 5e55c9b]
 files_modified:
+  - packages/backend/src/routes/__tests__/auth-flow.test.ts
+  - packages/backend/src/routes/__tests__/site-delegation-flow.test.ts
   - packages/backend/src/index.ts
   - packages/backend/src/routes/users.ts
   - packages/backend/src/services/AuthService.ts
@@ -78,6 +80,29 @@ decisions:
 - Backend targeted test: `npm test -w packages/backend -- src/utils/__tests__/getClientIP.test.ts` ✅ (7 tests passed)
 - Frontend build: `npm run build -w packages/frontend` ✅
   - Existing warning persists in `AccessLogsPage.tsx` regarding `AccessLog` export/import mismatch (pre-existing, non-blocking to Phase C scope).
+
+## GAP-CLOSURE evidence (Phase-C-only)
+
+Added two backend integration proofs (Vitest + Fastify `inject`) to convert key Phase C checks from manual to automated:
+
+1. **Auth chain proof** — `packages/backend/src/routes/__tests__/auth-flow.test.ts`
+   - Verifies: `POST /api/auth/register` → `POST /api/auth/login` (access token + refresh cookie) → `GET /api/auth/me` → `POST /api/auth/refresh` (cookie-based) → `GET /api/auth/me` with refreshed token.
+   - DB hygiene in suite: cleans `user_site_roles`, `refresh_tokens`, `users`.
+
+2. **Site delegation proof** — `packages/backend/src/routes/__tests__/site-delegation-flow.test.ts`
+   - Verifies via HTTP:
+     - super_admin grants delegated user a site role (`POST /api/sites/:id/roles`)
+     - delegated user can read roles (`GET /api/sites/:id/roles` → 200)
+     - delegated user cannot grant (`POST /api/sites/:id/roles` → 403)
+     - outsider cannot read (`GET /api/sites/:id/roles` → 403)
+     - super_admin revokes delegated role (`DELETE /api/sites/:id/roles/:userId`)
+     - delegated access removed with freshly issued token (`GET /api/sites/:id/roles` → 403)
+   - DB hygiene in suite: cleans `user_site_roles`, `refresh_tokens`, `users`, `sites`.
+
+### GAP-CLOSURE test run output
+- `npm test -w packages/backend -- src/routes/__tests__/auth-flow.test.ts src/routes/__tests__/site-delegation-flow.test.ts` ✅
+  - Test files: **2 passed**
+  - Tests: **2 passed**
 
 ## Commits
 1. `0bc1d29` — feat: add super-admin users API endpoints for Phase C
