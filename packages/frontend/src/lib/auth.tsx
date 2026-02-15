@@ -9,10 +9,17 @@ interface User {
   role: string;
 }
 
+interface RawUser {
+  id: string;
+  email: string;
+  role?: string;
+  global_role?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  setUser: (user: User | null) => void;
+  setUser: (user: RawUser | User | null) => void;
   setToken: (token: string | null) => void;
   logout: () => void;
   loading: boolean;
@@ -20,8 +27,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function normalizeUser(user: RawUser | null | undefined): User | null {
+  if (!user) {
+    return null;
+  }
+
+  const role = user.role || user.global_role;
+
+  if (!role) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    role,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -30,6 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setToken = (newToken: string | null) => {
     setTokenState(newToken);
     setApiAuthToken(newToken);
+  };
+
+  const setUser = (newUser: RawUser | User | null) => {
+    setUserState(normalizeUser(newUser));
   };
 
   useEffect(() => {
@@ -41,16 +70,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           withCredentials: true, // Critical: sends refresh cookie
         });
 
-        if (response.data.accessToken && response.data.user) {
-          // Restore access token and user state
-          setToken(response.data.accessToken);
-          setUser(response.data.user);
-        } else {
-          // Invalid response - clear state
-          setUser(null);
-          setToken(null);
-          localStorage.removeItem('user');
+        if (!response.data.accessToken) {
+          throw new Error('Invalid refresh response');
         }
+
+        setToken(response.data.accessToken);
+
+        const responseUser = normalizeUser(response.data.user);
+
+        if (responseUser) {
+          setUser(responseUser);
+        } else {
+          const meResponse = await api.get('/auth/me');
+          const meUser = normalizeUser(meResponse.data?.user);
+
+          if (!meUser) {
+            throw new Error('Unable to restore user state');
+          }
+
+          setUser(meUser);
+        }
+
       } catch (error) {
         // Refresh failed - user needs to log in again
         // Don't log error (expected when not logged in)
