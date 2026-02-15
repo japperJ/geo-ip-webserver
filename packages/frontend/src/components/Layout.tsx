@@ -65,7 +65,7 @@ export function Layout() {
                 Logout
               </Button>
               <p className="text-xs text-gray-500">
-                Phase 1 MVP - v1.0.0
+                Phase 5 - Production Ready - v2.0.0-beta
               </p>
             </div>
           </div>
