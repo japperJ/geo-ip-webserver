@@ -18,6 +18,7 @@ import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
 import { accessLogRoutes } from './routes/accessLogs.js';
 import { authRoutes } from './routes/auth.js';
+import { usersRoutes } from './routes/users.js';
 import { siteRoleRoutes } from './routes/siteRoles.js';
 import { gdprRoutes } from './routes/gdpr.js';
 import { contentRoutes } from './routes/content.js';
@@ -271,6 +272,7 @@ async function buildServer() {
 
   // Register routes
   await server.register(authRoutes, { prefix: '/api/auth' });
+  await server.register(usersRoutes, { prefix: '/api/users' });
   await server.register(siteRoutes, { prefix: '/api' });
   await server.register(siteRoleRoutes, { prefix: '/api/sites' });
   await server.register(accessLogRoutes, { prefix: '/api' });

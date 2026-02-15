@@ -19,6 +19,12 @@ export interface CreateUserInput {
   global_role?: 'super_admin' | 'user';
 }
 
+export interface UserListItem {
+  id: string;
+  email: string;
+  global_role: 'super_admin' | 'user';
+}
+
 export interface LoginResult {
   user: Omit<User, 'password_hash'>;
   accessToken: string;
@@ -264,5 +270,55 @@ export class AuthService {
     );
 
     return result.rows[0]?.role || null;
+  }
+
+  async listUsers(query?: string): Promise<UserListItem[]> {
+    const hasQuery = Boolean(query?.trim());
+
+    const result = hasQuery
+      ? await this.fastify.pg.query<UserListItem>(
+          `SELECT id, email, global_role
+           FROM users
+           WHERE deleted_at IS NULL
+             AND email ILIKE $1
+           ORDER BY email ASC
+           LIMIT 50`,
+          [`%${query?.trim()}%`]
+        )
+      : await this.fastify.pg.query<UserListItem>(
+          `SELECT id, email, global_role
+           FROM users
+           WHERE deleted_at IS NULL
+           ORDER BY email ASC
+           LIMIT 50`
+        );
+
+    return result.rows;
+  }
+
+  async updateUserGlobalRole(
+    userId: string,
+    globalRole: 'super_admin' | 'user'
+  ): Promise<UserListItem | null> {
+    const result = await this.fastify.pg.query<UserListItem>(
+      `UPDATE users
+       SET global_role = $2, updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id, email, global_role`,
+      [userId, globalRole]
+    );
+
+    return result.rows[0] || null;
+  }
+
+  async softDeleteUser(userId: string): Promise<boolean> {
+    const result = await this.fastify.pg.query(
+      `UPDATE users
+       SET deleted_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+
+    return result.rowCount > 0;
   }
 }
