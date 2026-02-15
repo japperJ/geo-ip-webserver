@@ -6,7 +6,8 @@ import { Readable } from 'stream';
 export async function gdprRoutes(fastify: FastifyInstance) {
   const gdprService = createGDPRService(fastify);
 
-  // Record consent
+  // Record consent (PUBLIC endpoint - visitors must consent before authentication)
+  // Uses sessionId as primary identifier, userId is optional for authenticated users
   fastify.post('/api/gdpr/consent', async (request, reply) => {
     const { consentType, granted, sessionId } = request.body as {
       consentType: 'gps' | 'cookies' | 'analytics';
@@ -14,7 +15,8 @@ export async function gdprRoutes(fastify: FastifyInstance) {
       sessionId: string;
     };
 
-    const userId = (request.user as any)?.id;
+    // userId is only available for authenticated requests (optional)
+    const userId = (request as any).user?.id || undefined;
     const ipAddress = request.ip;
 
     await gdprService.recordConsent({
