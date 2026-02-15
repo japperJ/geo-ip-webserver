@@ -3,8 +3,8 @@
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
 **Last Updated:** 2026-02-15  
-**Current Phase:** Phase B - Content Management (Complete)  
-**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete)
+**Current Phase:** Phase C - Frontend Pages & Delegation (Complete)  
+**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete, Phase C complete)
 
 ---
 
@@ -302,6 +302,19 @@ Week  | Remaining Tasks | Target Remaining | Status
 ---
 
 ## Change Log
+
+### 2026-02-15 (Phase C Complete: C1–C4)
+- **[COMPLETE]** Phase C Plans 1-5 executed (backend + frontend)
+- **[BACKEND]** Added super-admin users API surface:
+   - `GET /api/users?q=`
+   - `PATCH /api/users/:id`
+   - `DELETE /api/users/:id`
+- **[FRONTEND]** Auth refresh alignment now restores token + user via `/api/auth/refresh` + `/api/auth/me`
+- **[FRONTEND]** Added public register flow: `RegisterPage` + `/register` route + login link
+- **[FRONTEND]** Added super-admin `Users` page with role update/delete actions and nav gating
+- **[FRONTEND]** Added `SiteUsersPage` with site role list/grant/revoke, `/sites/:id/users` route, and denied UX handling for 403
+- **[API CONTRACT]** Standardized user lookup usage on `/api/users?q=` via `usersApi.ts` and SiteUsers picker
+- **[VERIFICATION]** Backend build passed, backend targeted tests passed (7/7), frontend build passed
 
 ### 2026-02-15 (Phase B Plan 2 Frontend Complete)
 - **[COMPLETE]** Phase B Plan 2 (frontend scope: CONTENT-004)
