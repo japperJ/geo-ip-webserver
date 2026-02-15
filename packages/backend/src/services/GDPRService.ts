@@ -54,12 +54,14 @@ export class GDPRService {
       result.user = userRes.rows[0];
     }
 
-    // Access logs (last 90 days)
+    // Access logs (last 90 days) - only from sites the user has access to
     const logsRes = await this.db.query(
-      `SELECT * FROM access_logs 
-       WHERE timestamp >= NOW() - INTERVAL '90 days'
-       ORDER BY timestamp DESC`,
-      []
+      `SELECT al.* FROM access_logs al
+       INNER JOIN user_site_roles usr ON al.site_id = usr.site_id
+       WHERE usr.user_id = $1
+         AND al.timestamp >= NOW() - INTERVAL '90 days'
+       ORDER BY al.timestamp DESC`,
+      [userId]
     );
     result.accessLogs = logsRes.rows;
 
@@ -100,15 +102,19 @@ export class GDPRService {
       await client.query('DELETE FROM gdpr_consents WHERE user_id = $1', [userId]);
 
       // Anonymize access logs instead of deleting (for audit trail)
+      // Only anonymize logs from sites the user has access to
       await client.query(
-        `UPDATE access_logs 
+        `UPDATE access_logs al
          SET ip_address = '0.0.0.0'::inet,
              gps_lat = NULL,
              gps_lng = NULL,
              user_agent = 'DELETED',
              screenshot_url = NULL
-         WHERE timestamp >= NOW() - INTERVAL '90 days'`,
-        []
+         FROM user_site_roles usr
+         WHERE al.site_id = usr.site_id
+           AND usr.user_id = $1
+           AND al.timestamp >= NOW() - INTERVAL '90 days'`,
+        [userId]
       );
 
       // Delete user account
