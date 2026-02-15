@@ -2,8 +2,29 @@ import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { contentRoutes } from '../content.js';
+import { gpsAccessControl } from '../../middleware/gpsAccessControl.js';
 
 const SITE_ID = '11111111-1111-4111-8111-111111111111';
+
+const GEO_ONLY_SITE = {
+  id: SITE_ID,
+  slug: 'demo-site',
+  hostname: null,
+  name: 'Demo Site',
+  access_mode: 'geo_only',
+  ip_allowlist: null,
+  ip_denylist: null,
+  country_allowlist: null,
+  country_denylist: null,
+  block_vpn_proxy: false,
+  geofence_type: null,
+  geofence_polygon: null,
+  geofence_center: null,
+  geofence_radius_km: null,
+  enabled: true,
+  created_at: new Date('2026-02-15T00:00:00.000Z'),
+  updated_at: new Date('2026-02-15T00:00:00.000Z'),
+} as const;
 
 function createContentServiceMock() {
   return {
@@ -54,6 +75,38 @@ async function buildTestServer() {
 
     const role = authHeader === 'Bearer admin' ? 'admin' : 'viewer';
     request.user = buildAuthPayload(role);
+  });
+
+  await app.register(contentRoutes as any, {
+    contentService: createContentServiceMock(),
+  } as any);
+
+  return app;
+}
+
+async function buildPublicGpsProtectedTestServer() {
+  const app = Fastify();
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+
+  app.decorate('authenticate', async () => {
+    return;
+  });
+
+  app.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+
+    if (!pathname.startsWith('/s/')) {
+      return;
+    }
+
+    request.site = GEO_ONLY_SITE as any;
+
+    await gpsAccessControl(request, reply, {
+      site: request.site,
+      geoipService: undefined,
+      geofenceService: {} as any,
+    });
   });
 
   await app.register(contentRoutes as any, {
@@ -145,6 +198,22 @@ describe('content routes', () => {
 
     expect(publicResponse.statusCode).toBe(302);
     expect(publicResponse.headers.location).toContain('https://public.example/guide.pdf');
+
+    await app.close();
+  });
+
+  it('returns 403 with gps_required for public route when GPS headers are missing', async () => {
+    const app = await buildPublicGpsProtectedTestServer();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/s/${SITE_ID}/content/guide.pdf`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({
+      reason: 'gps_required',
+    });
 
     await app.close();
   });

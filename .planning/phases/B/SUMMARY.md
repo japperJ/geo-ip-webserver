@@ -56,6 +56,32 @@ Implemented frontend content management for `CONTENT-004`:
 - **Plan 2 (frontend): complete**
 - **Phase B Content Management: complete**
 
+## GAP-CLOSURE (Phase B)
+
+- **Status:** ✅ GC-1 complete (automated)
+- **Objective proven:** `GET /s/:siteId/content/:filename` returns **403** on deny-path when access control blocks due to missing GPS headers.
+
+### What changed
+
+- Updated `packages/backend/src/routes/__tests__/content.test.ts` with a deterministic public-route deny-path test.
+- Added a minimal test-only `onRequest` GPS gate in test server setup to mirror production GPS enforcement for `/s/:siteId/*`.
+- Added assertion for missing GPS headers:
+   - status code: `403`
+   - response body includes `reason: 'gps_required'`
+
+### Evidence
+
+- Targeted backend test execution:
+   - `npm test -w packages/backend -- src/routes/__tests__/content.test.ts`
+   - Result: **4 passed, 0 failed**
+   - Includes: `returns 403 with gps_required for public route when GPS headers are missing`
+
+### Scope notes
+
+- Phase-B-only, minimal scope.
+- Test-only change (no runtime route/service behavior changes).
+- Existing tests in `content.test.ts` remained stable and passing.
+
 # Historical Plan 1 Notes
 
 ## What Was Done
