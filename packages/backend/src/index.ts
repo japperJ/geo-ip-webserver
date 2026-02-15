@@ -172,9 +172,10 @@ async function buildServer() {
     }
     
     // Call GPS middleware with proper context
+    // Pass geoipService only if available (graceful degradation)
     await gpsAccessControl(request, reply, {
       site: request.site,
-      geoipService: server.geoip,
+      geoipService: server.geoip || undefined,
       geofenceService,
     });
   });

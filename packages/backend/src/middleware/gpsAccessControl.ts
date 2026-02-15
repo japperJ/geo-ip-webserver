@@ -84,35 +84,40 @@ export async function gpsAccessControl(
   }
 
   // Cross-validate GPS with IP geolocation (anti-spoofing)
-  const ipGeo = await geoipService.lookup(
-    (request as any).clientIP || request.ip
-  );
-  
-  if (ipGeo?.location) {
-    const gpsIpValidation = validateGPSWithIP(
-      gpsCoords,
-      {
-        lat: ipGeo.location.latitude,
-        lng: ipGeo.location.longitude,
-      },
-      500 // 500km max distance
+  // If GeoIP service is unavailable, skip spoofing check (degraded mode)
+  if (geoipService) {
+    const ipGeo = await geoipService.lookup(
+      (request as any).clientIP || request.ip
     );
-
-    if (!gpsIpValidation.valid) {
-      request.log.warn(
+    
+    if (ipGeo?.location) {
+      const gpsIpValidation = validateGPSWithIP(
+        gpsCoords,
         {
-          gps: gpsCoords,
-          ip: ipGeo.location,
-          distance: gpsIpValidation.distance,
+          lat: ipGeo.location.latitude,
+          lng: ipGeo.location.longitude,
         },
-        'GPS-IP cross-validation failed'
+        500 // 500km max distance
       );
-      return reply.status(403).send({
-        error: 'GPS validation failed',
-        reason: 'gps_ip_mismatch',
-        message: gpsIpValidation.reason,
-      });
+
+      if (!gpsIpValidation.valid) {
+        request.log.warn(
+          {
+            gps: gpsCoords,
+            ip: ipGeo.location,
+            distance: gpsIpValidation.distance,
+          },
+          'GPS-IP cross-validation failed'
+        );
+        return reply.status(403).send({
+          error: 'GPS validation failed',
+          reason: 'gps_ip_mismatch',
+          message: gpsIpValidation.reason,
+        });
+      }
     }
+  } else {
+    request.log.warn('GeoIP service unavailable - skipping GPS anti-spoofing check');
   }
 
   // Check geofence if configured
