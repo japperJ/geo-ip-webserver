@@ -1,17 +1,23 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderOpen, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 
-const navigation = [
-  { name: 'Sites', href: '/sites', icon: LayoutDashboard },
-  { name: 'Access Logs', href: '/logs', icon: FileText },
-];
-
 export function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const sitePathMatch = location.pathname.match(/^\/sites\/([^/]+)\/(edit|content)/);
+  const activeSiteId = sitePathMatch?.[1];
+
+  const navigation = [
+    { name: 'Sites', href: '/sites', icon: LayoutDashboard },
+    ...(activeSiteId
+      ? [{ name: 'Site Content', href: `/sites/${activeSiteId}/content`, icon: FolderOpen }]
+      : []),
+    { name: 'Access Logs', href: '/logs', icon: FileText },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-900">

@@ -3,8 +3,8 @@
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
 **Last Updated:** 2026-02-15  
-**Current Phase:** Phase B - Content Management (Plan 1 Backend Complete)  
-**Project Status:** 🟡 In Progress (Phase A complete, Phase B Plan 1 complete)
+**Current Phase:** Phase B - Content Management (Complete)  
+**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete)
 
 ---
 
@@ -303,6 +303,16 @@ Week  | Remaining Tasks | Target Remaining | Status
 
 ## Change Log
 
+### 2026-02-15 (Phase B Plan 2 Frontend Complete)
+- **[COMPLETE]** Phase B Plan 2 (frontend scope: CONTENT-004)
+- **[IMPLEMENTATION]** Added `packages/frontend/src/lib/contentApi.ts` using shared axios instance from `packages/frontend/src/lib/api.ts`
+- **[IMPLEMENTATION]** Implemented `packages/frontend/src/pages/SiteContentPage.tsx` with list/upload/download/delete flows
+- **[RBAC-UI]** Added role-aware UX: viewer mode (list/download) and admin controls (upload/delete)
+- **[ROUTING]** Wired `sites/:id/content` route in `packages/frontend/src/App.tsx`
+- **[NAV]** Updated `packages/frontend/src/components/Layout.tsx` with contextual `Site Content` navigation
+- **[VERIFICATION]** Frontend build executed successfully for Plan 2 scope
+- **[MILESTONE]** Phase B Content Management is now complete (Plan 1 + Plan 2)
+
 ### 2026-02-15 (Phase B Plan 1 Backend Complete)
 - **[COMPLETE]** Phase B Plan 1 (backend scope: CONTENT-001/002/003 + blockers)
 - **[IMPLEMENTATION]** Added `ContentService` with site-scoped list/upload/delete/presign operations
@@ -312,7 +322,7 @@ Week  | Remaining Tasks | Target Remaining | Status
 - **[PIPELINE]** Added `/s/:siteId/*` path-based site resolution before IP/GPS middleware for public content route protection
 - **[QUALITY]** Added route/service/middleware tests for new functionality and param compatibility (`:siteId` + `:id`)
 - **[VERIFICATION]** Backend tests passing and backend build successful
-- **[NEXT]** Phase B Plan 2 (frontend content UI) remains pending
+- **[NEXT]** Proceed to next planned phase after content management completion
 
 ### 2026-02-14 (Phase 0 Complete)
 - **[COMPLETE]** Phase 0: Foundation & Architecture Setup (9/9 tasks - 100%)
@@ -357,10 +367,10 @@ Week  | Remaining Tasks | Target Remaining | Status
 ## Next Steps
 
 ### Immediate Actions (This Week)
-1. **Execute Phase B Plan 2** (frontend content UI: list/upload/download/delete)
-2. **Validate end-to-end** content flow from frontend through protected public endpoint
-3. **Keep site-assets bucket private** and preserve gated serving model (no anonymous direct fetch)
-4. **Update roadmap/state metrics** after Plan 2 completion
+1. **Run end-to-end validation** of content flow in a live environment (admin and viewer roles)
+2. **Keep site-assets bucket private** and preserve gated serving model (no anonymous direct fetch)
+3. **Address existing frontend warning** in `AccessLogsPage.tsx` import/export mismatch
+4. **Begin next roadmap phase** per `.planning/PORT_FEATURES_ROADMAP.md`
 
 ### Phase 0 Target (Weeks 1-2)
 1. Complete DEV-001 to DEV-009 (9 tasks)

@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
 import { SitesPage } from '@/pages/SitesPage';
 import { SiteEditorPage } from '@/pages/SiteEditorPage';
+import { SiteContentPage } from '@/pages/SiteContentPage';
 import { AccessLogsPage } from '@/pages/AccessLogsPage';
 import { LoginPage } from '@/pages/LoginPage';
 
@@ -18,6 +19,7 @@ function App() {
             <Route path="sites" element={<SitesPage />} />
             <Route path="sites/new" element={<SiteEditorPage />} />
             <Route path="sites/:id/edit" element={<SiteEditorPage />} />
+            <Route path="sites/:id/content" element={<SiteContentPage />} />
             <Route path="logs" element={<AccessLogsPage />} />
           </Route>
         </Routes>

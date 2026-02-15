@@ -1,29 +1,62 @@
 ---
 phase: B
-plan: 1
+plan: 2
 status: complete
-tasks_completed: 4/4
-commits: [0ce2ede]
+tasks_completed: 1/1
+commits: []
 files_modified:
-  - packages/backend/src/middleware/requireSiteAccess.ts
-  - docker-compose.dev.yml
-  - docker-compose.yml
-  - packages/backend/src/services/S3Service.ts
-  - packages/backend/src/services/ContentService.ts
-  - packages/backend/src/routes/content.ts
-  - packages/backend/src/index.ts
-  - packages/backend/.env.example
-  - packages/backend/src/services/__tests__/ContentService.test.ts
-  - packages/backend/src/routes/__tests__/content.test.ts
-  - packages/backend/src/middleware/__tests__/requireSiteAccess.test.ts
+   - packages/frontend/src/lib/contentApi.ts
+   - packages/frontend/src/pages/SiteContentPage.tsx
+   - packages/frontend/src/App.tsx
+   - packages/frontend/src/components/Layout.tsx
 deviations:
-  - "Used JSON base64 upload payload for CONTENT-002 upload route instead of multipart/form-data due npm workspace dependency installation failure in this environment."
+   - "Frontend upload uses base64 JSON payload to match Plan 1 backend upload contract."
 decisions:
-  - "Standardized backend storage environment wiring to AWS_S3_* to match existing S3Service implementation."
-  - "Added path-based site resolution for /s/:siteId/* before IP/GPS hooks so public content routes are covered by existing access-control middleware."
+   - "Content API module reuses shared axios instance from `lib/api.ts` with auth interceptor."
 ---
 
-# Phase B, Plan 1 Summary
+# Phase B, Plan 2 Summary
+
+## What Was Done
+
+Implemented frontend content management for `CONTENT-004`:
+
+1. **Created content API client**
+    - Added `packages/frontend/src/lib/contentApi.ts`.
+    - Reused shared `api` instance from `packages/frontend/src/lib/api.ts`.
+    - Added exported functions required by Plan 2:
+       - `listSiteContent`
+       - `uploadSiteContent`
+       - `deleteSiteContent`
+       - `getSiteContentDownloadUrl`
+    - Matched backend upload contract by sending base64 JSON payload.
+
+2. **Implemented Site Content page UI**
+    - Rebuilt `packages/frontend/src/pages/SiteContentPage.tsx`.
+    - Added React Query query/mutations for list/upload/delete.
+    - Added download action via presigned URL request.
+    - Added role-aware rendering:
+       - viewers can list/download
+       - admin/super-admin can upload/delete
+
+3. **Wired routing and navigation**
+    - Confirmed route in `packages/frontend/src/App.tsx`: `sites/:id/content`.
+    - Updated `packages/frontend/src/components/Layout.tsx` with contextual `Site Content` navigation when browsing a specific site.
+
+## Verification
+
+- Frontend TypeScript diagnostics for modified files: **no errors**.
+- Frontend build executed: `npm run build -w packages/frontend`.
+   - Build succeeded for the content UI changes.
+   - Existing unrelated warning remains in `AccessLogsPage.tsx` import of `AccessLog` from `accessLogApi.ts`.
+
+## Phase B Outcome
+
+- **Plan 1 (backend): complete**
+- **Plan 2 (frontend): complete**
+- **Phase B Content Management: complete**
+
+# Historical Plan 1 Notes
 
 ## What Was Done
 
