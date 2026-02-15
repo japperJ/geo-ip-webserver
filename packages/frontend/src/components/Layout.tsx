@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, FolderOpen, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderOpen, LogOut, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,19 @@ export function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const sitePathMatch = location.pathname.match(/^\/sites\/([^/]+)\/(edit|content)/);
+  const sitePathMatch = location.pathname.match(/^\/sites\/([^/]+)\/(edit|content|users)/);
   const activeSiteId = sitePathMatch?.[1];
 
   const navigation = [
     { name: 'Sites', href: '/sites', icon: LayoutDashboard },
+    ...(user?.role === 'super_admin'
+      ? [{ name: 'Users', href: '/users', icon: Users }]
+      : []),
     ...(activeSiteId
-      ? [{ name: 'Site Content', href: `/sites/${activeSiteId}/content`, icon: FolderOpen }]
+      ? [
+          { name: 'Site Content', href: `/sites/${activeSiteId}/content`, icon: FolderOpen },
+          { name: 'Site Users', href: `/sites/${activeSiteId}/users`, icon: Users },
+        ]
       : []),
     { name: 'Access Logs', href: '/logs', icon: FileText },
   ];
