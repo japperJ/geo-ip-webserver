@@ -22,9 +22,11 @@ import { siteRoleRoutes } from './routes/siteRoles.js';
 import { gdprRoutes } from './routes/gdpr.js';
 import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
 import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { gpsAccessControl } from './middleware/gpsAccessControl.js';
 import { authenticateJWT } from './middleware/authenticateJWT.js';
 import { CacheService } from './services/CacheService.js';
 import { createScreenshotService } from './services/ScreenshotService.js';
+import { GeofenceService } from './services/GeofenceService.js';
 import { AccessLogService } from './services/AccessLogService.js';
 import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
@@ -132,6 +134,9 @@ async function buildServer() {
   // Initialize access log service and inject screenshot service
   const accessLogService = new AccessLogService(pool);
   accessLogService.setScreenshotService(screenshotService);
+  
+  // Initialize geofence service (Phase 2)
+  const geofenceService = new GeofenceService(server);
 
   // Register GeoIP plugin (optional if databases not present)
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
@@ -152,9 +157,27 @@ async function buildServer() {
   // Register global middleware hooks (run on every request in order)
   // 1. Site resolution (attaches site to request) - uses cache service
   // 2. IP access control (uses site config for access decisions)
+  // 3. GPS access control (validates GPS coordinates and geofencing)
   const siteResolutionMiddleware = createSiteResolutionMiddleware(cacheService);
   server.addHook('onRequest', siteResolutionMiddleware);
   server.addHook('onRequest', ipAccessControl);
+  
+  // GPS access control middleware wrapper
+  server.addHook('onRequest', async (request, reply) => {
+    // Skip if no site attached or GPS not required
+    if (!request.site || 
+        request.site.access_mode === 'disabled' || 
+        request.site.access_mode === 'ip_only') {
+      return;
+    }
+    
+    // Call GPS middleware with proper context
+    await gpsAccessControl(request, reply, {
+      site: request.site,
+      geoipService: server.geoip,
+      geofenceService,
+    });
+  });
 
   // Health check endpoint
   server.get('/health', async () => {
