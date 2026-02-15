@@ -16,8 +16,54 @@ export interface GPSAccessControlContext {
 
 /**
  * Extract GPS coordinates from request
+ * Supports both headers (for all methods including GET) and body (for JSON requests)
+ * 
+ * Headers contract:
+ *  - x-gps-lat: WGS84 decimal degrees (required if using headers)
+ *  - x-gps-lng: WGS84 decimal degrees (required if using headers)
+ *  - x-gps-accuracy: meters (optional)
+ * 
+ * Body contract (backward compatible):
+ *  - gps_lat: number (required)
+ *  - gps_lng: number (required)
+ *  - gps_accuracy: number (optional)
  */
 function extractGPSCoordinates(request: FastifyRequest): GPSCoordinates | null {
+  // Priority 1: Try headers first (supports all HTTP methods)
+  const latHeader = request.headers['x-gps-lat'];
+  const lngHeader = request.headers['x-gps-lng'];
+  const accuracyHeader = request.headers['x-gps-accuracy'];
+
+  // If any GPS header present, require both lat & lng
+  if (latHeader !== undefined || lngHeader !== undefined) {
+    if (latHeader === undefined || lngHeader === undefined) {
+      // Partial GPS headers - invalid
+      return null;
+    }
+
+    // Parse and validate header values (strict)
+    const lat = Number(typeof latHeader === 'string' ? latHeader.trim() : latHeader);
+    const lng = Number(typeof lngHeader === 'string' ? lngHeader.trim() : lngHeader);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    // Parse optional accuracy
+    let accuracy: number | undefined;
+    if (accuracyHeader !== undefined) {
+      const parsedAccuracy = Number(
+        typeof accuracyHeader === 'string' ? accuracyHeader.trim() : accuracyHeader
+      );
+      if (Number.isFinite(parsedAccuracy)) {
+        accuracy = parsedAccuracy;
+      }
+    }
+
+    return { lat, lng, accuracy };
+  }
+
+  // Priority 2: Fall back to body (for POST/PUT with JSON)
   const body = request.body as any;
 
   if (!body || typeof body !== 'object') {
