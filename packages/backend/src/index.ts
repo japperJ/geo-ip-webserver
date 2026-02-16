@@ -23,7 +23,7 @@ import { siteRoleRoutes } from './routes/siteRoles.js';
 import { gdprRoutes } from './routes/gdpr.js';
 import { contentRoutes } from './routes/content.js';
 import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
-import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { ipAccessControl, setIpAccessControlAccessLogService } from './middleware/ipAccessControl.js';
 import { gpsAccessControl } from './middleware/gpsAccessControl.js';
 import { authenticateJWT } from './middleware/authenticateJWT.js';
 import { CacheService } from './services/CacheService.js';
@@ -138,6 +138,7 @@ async function buildServer() {
   // Initialize access log service and inject screenshot service
   const accessLogService = new AccessLogService(pool);
   accessLogService.setScreenshotService(screenshotService);
+  setIpAccessControlAccessLogService(accessLogService);
   
   // Initialize geofence service (Phase 2)
   const geofenceService = new GeofenceService(server);

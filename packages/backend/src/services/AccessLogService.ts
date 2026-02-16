@@ -20,6 +20,19 @@ export class AccessLogService {
     this.syncMode = enabled;
   }
 
+  private getSafeScreenshotTarget(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return null;
+      }
+
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Log access decision (allowed or denied)
    * Non-blocking: Uses setImmediate to log asynchronously (unless syncMode is enabled)
@@ -66,11 +79,17 @@ export class AccessLogService {
         if (!input.allowed && this.screenshotService && input.url) {
           const logId = result.rows[0].id;
           const timestamp = result.rows[0].timestamp;
+          const screenshotTarget = this.getSafeScreenshotTarget(input.url);
+
+          if (!screenshotTarget) {
+            console.warn('Skipping screenshot enqueue due to unsafe URL format');
+            return;
+          }
 
           try {
             await this.screenshotService.enqueueScreenshot({
               siteId: input.site_id,
-              url: input.url,
+              url: screenshotTarget,
               reason: input.reason || 'blocked',
               logId,
               ipAddress: input.ip_address,
