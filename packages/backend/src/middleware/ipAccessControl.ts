@@ -67,6 +67,13 @@ export async function ipAccessControl(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
+  const pathname = request.url.split('?')[0];
+
+  // Always bypass documentation endpoints
+  if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+    return;
+  }
+
   const site = request.site;
 
   // Skip if no site or access control disabled

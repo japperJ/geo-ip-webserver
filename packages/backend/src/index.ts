@@ -1,12 +1,16 @@
 // @ts-nocheck
 import Fastify from 'fastify';
 import {
+  createJsonSchemaTransform,
+  jsonSchemaTransformObject,
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import redis from '@fastify/redis';
@@ -66,13 +70,32 @@ async function buildServer() {
     credentials: true,
   });
 
+  await server.register(swagger, {
+    openapi: {
+      info: {
+        title: 'Geo-IP Webserver API',
+        version: '1.0.0',
+      },
+    },
+    transform: createJsonSchemaTransform({
+      skipList: ['/documentation', '/documentation/json', '/documentation/yaml', '/documentation/static/*'],
+    }),
+    transformObject: jsonSchemaTransformObject,
+  });
+
+  await server.register(swaggerUi, {
+    routePrefix: '/documentation',
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+  });
+
   // Phase 5: Enhanced helmet configuration with CSP
-  await server.register(helmet, {
+  await server.register(helmet, (instance) => ({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"], // Required for some CSS-in-JS
+        scriptSrc: ["'self'", ...instance.swaggerCSP.script],
+        styleSrc: ["'self'", "'unsafe-inline'", ...instance.swaggerCSP.style],
         imgSrc: ["'self'", "data:", "https://*.openstreetmap.org"],
         fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
@@ -86,7 +109,7 @@ async function buildServer() {
       includeSubDomains: true,
       preload: true,
     },
-  });
+  }));
 
   // Decorate with pg pool (instead of plugin for Fastify 5 compatibility)
   server.decorate('pg', pool);
@@ -203,6 +226,13 @@ async function buildServer() {
   
   // GPS access control middleware wrapper
   server.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+
+    // Always bypass documentation endpoints
+    if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+      return;
+    }
+
     // Skip if no site attached or GPS not required
     if (!request.site || 
         request.site.access_mode === 'disabled' || 

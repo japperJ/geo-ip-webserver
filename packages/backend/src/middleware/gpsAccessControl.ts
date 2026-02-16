@@ -100,6 +100,13 @@ export async function gpsAccessControl(
   reply: FastifyReply,
   context: GPSAccessControlContext
 ): Promise<void> {
+  const pathname = request.url.split('?')[0];
+
+  // Always bypass documentation endpoints
+  if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+    return;
+  }
+
   const { site, geoipService, geofenceService } = context;
 
   // Skip if access mode doesn't require GPS
