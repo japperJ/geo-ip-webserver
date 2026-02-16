@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "authToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTE3ODQxMiwiZXhwIjoxNzcxMTgyMDEyfQ.9wpy4PCY0FCHuHCGrHGG3LNFWMaZoEOt2GHcfrtZdMU",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTI0NzAxMCwiZXhwIjoxNzcxMjUwNjEwfQ.Hsy-3y1DO4MSeTQecS0pabvj_BRu8kzi3a5FURa5d6o",
       "domain": "localhost",
       "path": "/",
-      "expires": 1771264812,
+      "expires": 1771333410,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -17,7 +17,7 @@
       "localStorage": [
         {
           "name": "authToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTE3ODQxMiwiZXhwIjoxNzcxMTgyMDEyfQ.9wpy4PCY0FCHuHCGrHGG3LNFWMaZoEOt2GHcfrtZdMU"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTI0NzAxMCwiZXhwIjoxNzcxMjUwNjEwfQ.Hsy-3y1DO4MSeTQecS0pabvj_BRu8kzi3a5FURa5d6o"
         },
         {
           "name": "user",
