@@ -21,10 +21,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { accessLogApi } from '@/lib/accessLogApi';
-import type { AccessLog } from '@/lib/accessLogApi';
+import type { AccessLog, ExportAccessLogsParams } from '@/lib/accessLogApi';
 import { artifactsApi, extractS3Key } from '@/lib/artifactsApi';
 import { siteApi } from '@/lib/api';
-import { Loader2, Filter, Eye } from 'lucide-react';
+import { Loader2, Filter, Eye, Download } from 'lucide-react';
 
 export function AccessLogsPage() {
   const [page, setPage] = useState(1);
@@ -38,6 +38,8 @@ export function AccessLogsPage() {
   }>({});
 
   const [selectedLog, setSelectedLog] = useState<AccessLog | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const screenshotKey = selectedLog?.screenshot_url
     ? extractS3Key(selectedLog.screenshot_url)
     : null;
@@ -78,6 +80,67 @@ export function AccessLogsPage() {
     return new Date(timestamp).toLocaleString();
   };
 
+  const exportSiteId = filters.site_id && filters.site_id !== 'all' ? filters.site_id : undefined;
+
+  const getExportFilters = (): ExportAccessLogsParams => ({
+    allowed: filters.allowed,
+    start_date: filters.start_date,
+    end_date: filters.end_date,
+    ip: filters.ip,
+  });
+
+  const getFilenameFromContentDisposition = (header: string | null | undefined, siteId: string) => {
+    if (!header) {
+      return `access-logs-${siteId}.csv`;
+    }
+
+    const filenameMatch = header.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+    const encoded = filenameMatch?.[1];
+    const plain = filenameMatch?.[2];
+
+    if (encoded) {
+      try {
+        return decodeURIComponent(encoded);
+      } catch {
+        return `access-logs-${siteId}.csv`;
+      }
+    }
+
+    if (plain) {
+      return plain;
+    }
+
+    return `access-logs-${siteId}.csv`;
+  };
+
+  const handleExportCsv = async () => {
+    if (!exportSiteId) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const response = await accessLogApi.exportCsv(exportSiteId, getExportFilters());
+      const blobUrl = URL.createObjectURL(response.data);
+      const filename = getFilenameFromContentDisposition(response.headers['content-disposition'], exportSiteId);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to export access logs CSV', error);
+      setExportError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -96,7 +159,7 @@ export function AccessLogsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <Label htmlFor="site_filter">Site</Label>
               <Select
@@ -164,6 +227,16 @@ export function AccessLogsPage() {
                 onChange={(e) => handleFilterChange('start_date', e.target.value)}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end_date_filter">End Date</Label>
+              <Input
+                id="end_date_filter"
+                type="date"
+                value={filters.end_date || ''}
+                onChange={(e) => handleFilterChange('end_date', e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -171,12 +244,32 @@ export function AccessLogsPage() {
       {/* Logs Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Access Logs</CardTitle>
-          <CardDescription>
-            {data ? `Showing ${data.logs.length} of ${data.pagination.total} logs` : 'Loading...'}
-          </CardDescription>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>Recent Access Logs</CardTitle>
+              <CardDescription>
+                {data ? `Showing ${data.logs.length} of ${data.pagination.total} logs` : 'Loading...'}
+              </CardDescription>
+            </div>
+            <Button
+              onClick={handleExportCsv}
+              disabled={!exportSiteId || isExporting}
+              className="md:self-start"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Export CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
+          {exportError && (
+            <p className="mb-4 text-sm text-red-400">{exportError}</p>
+          )}
+
           {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-gray-400" />

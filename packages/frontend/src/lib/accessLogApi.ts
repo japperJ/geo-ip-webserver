@@ -40,6 +40,8 @@ export interface ListAccessLogsParams {
   limit?: number;
 }
 
+export type ExportAccessLogsParams = Pick<ListAccessLogsParams, 'allowed' | 'start_date' | 'end_date' | 'ip'>;
+
 // Access Log API functions
 export const accessLogApi = {
   list: async (params?: ListAccessLogsParams): Promise<ListAccessLogsResponse> => {
@@ -50,5 +52,12 @@ export const accessLogApi = {
   getById: async (id: string): Promise<AccessLog> => {
     const { data } = await api.get<AccessLog>(`/access-logs/${id}`);
     return data;
+  },
+
+  exportCsv: async (siteId: string, params?: ExportAccessLogsParams) => {
+    return api.get<Blob>(`/sites/${siteId}/access-logs/export`, {
+      params,
+      responseType: 'blob',
+    });
   },
 };
