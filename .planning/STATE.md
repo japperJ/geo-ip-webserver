@@ -2,9 +2,9 @@
 
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
-**Last Updated:** 2026-02-15  
-**Current Phase:** Phase C - Frontend Pages & Delegation (Complete)  
-**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete, Phase C complete)
+**Last Updated:** 2026-02-16  
+**Current Phase:** Phase D - Screenshot Pipeline & Access Logs Viewer (Complete)  
+**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete, Phase C complete, Phase D complete)
 
 ---
 
@@ -13,7 +13,7 @@
 | Metric | Value |
 |---|---|
 | **Overall Progress** | 6% (9/145 tasks) |
-| **Current Phase** | Phase 1: MVP - IP Access Control |
+| **Current Phase** | Phase D: Screenshot Pipeline |
 | **Phase Progress** | 0% (0/23 tasks) |
 | **Estimated Completion** | Week of June 8, 2026 (21 weeks from now) |
 | **Total Timeline** | 16-22 weeks (4-5.5 months) |
@@ -42,29 +42,26 @@
 
 ---
 
-## Current Phase: Phase 1 - MVP - IP Access Control
+## Current Phase: Phase D - Screenshot Pipeline & Access Logs Viewer
 
-**Status:** 🔴 Not Started  
-**Progress:** 0% (0/23 tasks)  
-**Target Duration:** 4-5 weeks  
-**Target Start Date:** TBD  
-**Target End Date:** TBD
+**Status:** 🟢 Complete  
+**Progress:** 100% (3/3 sub-plans complete)  
+**Target Duration:** Single-session sub-plans (D-1a, D-1b, D-2)  
+**Target Start Date:** 2026-02-16  
+**Target End Date:** 2026-02-16
 
-### Phase 1 Objectives
-1. Implement single-site IP-based access control
-2. Create admin UI for site configuration
-3. Build geofence validation API
-4. Implement VPN/proxy detection
-5. Deploy MVP to staging environment
+### Phase D Objectives
+1. Close screenshot producer wiring in blocked request middleware path
+2. Complete worker pipeline (capture/upload/update `access_logs.screenshot_url`)
+3. Add screenshot viewer to Access Logs detail modal via artifact pre-sign endpoint
 
 ### Active Tasks (In Progress)
-*None - awaiting Phase 1 kickoff*
+*None - Phase D implementation complete*
 
 ### Next Tasks (To Do)
-1. **MVP-001:** Create site configuration API endpoints
-2. **MVP-002:** Implement IP allowlist/denylist validation
-3. **MVP-003:** Build VPN/proxy detection service
-4. **MVP-004:** Create admin dashboard (React)
+1. Execute full environment E2E validation gate for blocked-request screenshot flow
+2. Monitor worker queue throughput/error rates in staging
+3. Continue with next roadmap phase tasks per `.planning/PORT_FEATURES_ROADMAP.md`
 
 ### Completed Tasks
 **Phase 0: Foundation & Architecture Setup (9/9 - 100%)**
@@ -302,6 +299,16 @@ Week  | Remaining Tasks | Target Remaining | Status
 ---
 
 ## Change Log
+
+### 2026-02-16 (Phase D Complete: D-1a, D-1b, D-2)
+- **[COMPLETE]** Implemented Phase D screenshot pipeline and Access Logs viewer end-to-end code path
+- **[BACKEND]** Closed injection gap so blocked requests in `ipAccessControl` use injected `AccessLogService` with screenshot producer
+- **[BACKEND]** Enforced absolute, constrained screenshot target URLs before enqueue
+- **[WORKER]** Added canonical entrypoint `packages/workers/src/screenshotWorker.ts` and repointed worker scripts/Docker runtime
+- **[WORKER]** Implemented DB linkage update (`access_logs.screenshot_url`) using `(id, timestamp)` after successful upload
+- **[CONFIG]** Standardized Redis and S3/MinIO env compatibility across producer/worker (supports `REDIS_URL` + host/port fallback and `AWS_S3_*` with legacy `S3_*` fallback in worker)
+- **[FRONTEND]** Added screenshot section in Access Logs detail modal using `/api/artifacts/:key` pre-signed URL flow
+- **[VERIFICATION]** Backend tests passed (AccessLogService), backend build passed, workers build passed, frontend build passed
 
 ### 2026-02-15 (Phase C Complete: C1–C4)
 - **[COMPLETE]** Phase C Plans 1-5 executed (backend + frontend)
