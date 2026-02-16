@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const isEnvManagedServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -9,7 +12,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 30000,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -23,12 +26,20 @@ export default defineConfig({
       name: 'chromium',
       use: { 
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
+        ...(isEnvManagedServer
+          ? { storageState: 'playwright/.auth/user.json' }
+          : {}),
       },
-      dependencies: ['setup'],
+      dependencies: isEnvManagedServer ? ['setup'] : [],
     },
   ],
 
-  // No webServer - tests run against Docker deployment
-  // Run `docker compose up` before running tests
+  webServer: isEnvManagedServer
+    ? undefined
+    : {
+        command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120000,
+      },
 });
