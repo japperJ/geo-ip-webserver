@@ -99,25 +99,29 @@ test.describe('Access Logs CSV export', () => {
     });
 
     await page.goto('/logs');
-    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/logs$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Access Logs' })).toBeVisible();
 
-    await expect(page.locator('h1').filter({ hasText: 'Access Logs' })).toBeVisible();
+    const exportButton = page.getByRole('button', { name: /export csv/i });
+    await expect(exportButton).toBeVisible();
 
-    const siteFilter = page.getByRole('combobox').nth(0);
+    const siteFilter = page.locator('label:has-text("Site")').locator('..').getByRole('combobox');
+    await expect(siteFilter).toBeVisible();
     await siteFilter.click();
     await page.getByRole('option', { name: 'Export Test Site' }).click();
 
-    const statusFilter = page.getByRole('combobox').nth(1);
+    const statusFilter = page.locator('label:has-text("Status")').locator('..').getByRole('combobox');
+    await expect(statusFilter).toBeVisible();
     await statusFilter.click();
     await page.getByRole('option', { name: 'Blocked' }).click();
     await expect(statusFilter).toContainText('Blocked');
 
-    await page.locator('#ip_filter').fill(ipFilter);
+    await page.getByLabel('IP Address').fill(ipFilter);
 
     const logsUrlBeforeExport = page.url();
     const downloadPromise = page.waitForEvent('download');
 
-    await page.getByRole('button', { name: /export csv/i }).click();
+    await exportButton.click();
     const download = await downloadPromise;
 
     await expect(page).toHaveURL(logsUrlBeforeExport);
