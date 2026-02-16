@@ -3,8 +3,8 @@
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
 **Last Updated:** 2026-02-16  
-**Current Phase:** Phase F - Documentation Sync (In Progress)  
-**Project Status:** 🟡 In Progress (Improvement roadmap phases A-E complete; F in progress)
+**Current Phase:** Phase F - Documentation Sync (Complete)  
+**Project Status:** 🟢 Improvement roadmap complete (phases A-F complete)
 
 ---
 
@@ -13,8 +13,8 @@
 | Metric | Value |
 |---|---|
 | **Active Roadmap** | `.planning/PORT_FEATURES_ROADMAP.md` (A-F) |
-| **Completed Improvement Phases** | 5/6 (A, B, C, D, E complete) |
-| **Current Focus** | F2 / DOC-002: Swagger UI at `/documentation` |
+| **Completed Improvement Phases** | 6/6 (A-F complete) |
+| **Current Focus** | Post-F stabilization and next roadmap selection |
 | **Blocked Tasks** | 0 |
 | **Immediate Exit Criterion** | `/documentation` + `/documentation/json` reachable |
 
@@ -29,24 +29,24 @@
 | **C** | Missing Frontend Pages | 🟢 Complete | `.planning/phases/C/SUMMARY.md` |
 | **D** | Screenshot Worker (BullMQ async) | 🟢 Complete | `.planning/phases/D/SUMMARY.md` |
 | **E** | Audit Log CSV Export | 🟢 Complete | `.planning/phases/E/SUMMARY.md` |
-| **F** | Documentation Sync | 🟡 In Progress | F-1 (STATE sync) in progress; F-2 pending merge |
+| **F** | Documentation Sync | 🟢 Complete | DOC-001 + DOC-002 delivered and verified |
 
 **Phase F gate:** Swagger/OpenAPI documentation must be reachable at `/documentation` with working spec endpoints (`/documentation/json`, `/documentation/yaml`).
 
 ---
 
-## Current Workstream (Phase F)
+## Phase F Completion Notes
 
-### F-1 (DOC-001): STATE accuracy and consistency
-- Remove contradictory legacy progress signals from this tracker.
-- Keep one authoritative phase model (A-F improvement roadmap).
-- Ensure status, quick stats, and next step align.
+### F-1 (DOC-001): STATE accuracy and consistency ✅
+- Removed contradictory legacy 0-5/145-task progress claims from this tracker.
+- Kept one authoritative phase model (A-F improvement roadmap).
+- Aligned status, quick stats, and next-step guidance.
 
-### F-2 (DOC-002): Swagger/OpenAPI availability
-- Add `@fastify/swagger` and `@fastify/swagger-ui` to backend dependencies.
-- Register Swagger + Swagger UI in backend startup with Zod transform integration.
-- Bypass docs routes from site resolution and IP/GPS access-control hooks.
-- Ensure Helmet CSP compatibility for Swagger UI.
+### F-2 (DOC-002): Swagger/OpenAPI availability ✅
+- Added `@fastify/swagger` and `@fastify/swagger-ui` in backend dependencies.
+- Registered Swagger + Swagger UI in backend startup with Zod transform integration.
+- Bypassed docs routes from site resolution and IP/GPS access-control hooks.
+- Applied Helmet CSP compatibility for Swagger UI.
 
 ---
 
@@ -62,12 +62,9 @@
 
 ## Next Step
 
-Complete **Phase F / DOC-002** and verify runtime reachability for:
-1. `GET /documentation`
-2. `GET /documentation/json`
-3. `GET /documentation/yaml`
-
-Then record Phase F completion in `.planning/phases/F/SUMMARY.md` and mark this state as complete for A-F.
+Improvement roadmap A-F is complete. Next planning action:
+1. Capture final verification and commits in `.planning/phases/F/SUMMARY.md`.
+2. Select the next roadmap increment from `.planning/PORT_FEATURES_ROADMAP.md` follow-up priorities.
 
 ---
 
