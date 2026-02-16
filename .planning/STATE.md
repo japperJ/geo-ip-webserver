@@ -3,8 +3,8 @@
 **Project Name:** Geo-Fenced Multi-Site Webserver  
 **Version:** 1.0.0-alpha  
 **Last Updated:** 2026-02-16  
-**Current Phase:** Phase D - Screenshot Pipeline & Access Logs Viewer (Complete)  
-**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete, Phase C complete, Phase D complete)
+**Current Phase:** Phase E - Audit Log CSV Export (Complete)  
+**Project Status:** 🟡 In Progress (Phase A complete, Phase B complete, Phase C complete, Phase D complete, Phase E complete)
 
 ---
 
@@ -13,8 +13,8 @@
 | Metric | Value |
 |---|---|
 | **Overall Progress** | 6% (9/145 tasks) |
-| **Current Phase** | Phase D: Screenshot Pipeline |
-| **Phase Progress** | 0% (0/23 tasks) |
+| **Current Phase** | Phase E: Audit Log CSV Export |
+| **Phase Progress** | 100% (3/3 sub-plans) |
 | **Estimated Completion** | Week of June 8, 2026 (21 weeks from now) |
 | **Total Timeline** | 16-22 weeks (4-5.5 months) |
 | **Active Tasks** | 0 |
@@ -42,25 +42,25 @@
 
 ---
 
-## Current Phase: Phase D - Screenshot Pipeline & Access Logs Viewer
+## Current Phase: Phase E - Audit Log CSV Export
 
 **Status:** 🟢 Complete  
 **Progress:** 100% (3/3 sub-plans complete)  
-**Target Duration:** Single-session sub-plans (D-1a, D-1b, D-2)  
+**Target Duration:** Single-session sub-plans (E1.1, E1.2, E2.1)  
 **Target Start Date:** 2026-02-16  
 **Target End Date:** 2026-02-16
 
-### Phase D Objectives
-1. Close screenshot producer wiring in blocked request middleware path
-2. Complete worker pipeline (capture/upload/update `access_logs.screenshot_url`)
-3. Add screenshot viewer to Access Logs detail modal via artifact pre-sign endpoint
+### Phase E Objectives
+1. Add site-scoped, RBAC-gated CSV export endpoint for access logs
+2. Preserve access-log list filter semantics in CSV export (`allowed/start_date/end_date/ip`)
+3. Add authenticated frontend blob download flow for filtered access-log CSV export
 
 ### Active Tasks (In Progress)
-*None - Phase D implementation complete*
+*None - Phase E implementation complete*
 
 ### Next Tasks (To Do)
-1. Execute full environment E2E validation gate for blocked-request screenshot flow
-2. Monitor worker queue throughput/error rates in staging
+1. Execute end-to-end UX validation for CSV export flow in staging
+2. Monitor export usage patterns and large-export memory profile in production-like environments
 3. Continue with next roadmap phase tasks per `.planning/PORT_FEATURES_ROADMAP.md`
 
 ### Completed Tasks
@@ -299,6 +299,16 @@ Week  | Remaining Tasks | Target Remaining | Status
 ---
 
 ## Change Log
+
+### 2026-02-16 (Phase E Complete: E1.1, E1.2, E2.1)
+- **[COMPLETE]** Implemented Phase E audit-log CSV export flow end-to-end
+- **[BACKEND]** Added `GET /api/sites/:siteId/access-logs/export` with RBAC middleware (`fastify.authenticate`, `requireSiteAccess`)
+- **[BACKEND]** Reused existing access-log filter semantics (`allowed`, `start_date`, `end_date`, `ip`) and forced site scope from `:siteId`
+- **[BACKEND]** Added CSV response headers (`Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename=...`)
+- **[BACKEND]** Added route integration-style test coverage for filtered CSV export, unauthorized access (403), and super-admin access
+- **[FRONTEND]** Added authenticated blob export API method and Access Logs `Export CSV` button with filter/site-context preservation
+- **[FRONTEND]** Implemented browser download via blob URL + anchor click (no `window.location` navigation)
+- **[VERIFICATION]** Backend targeted export tests passed (3/3), backend build passed, frontend build passed
 
 ### 2026-02-16 (Phase D Complete: D-1a, D-1b, D-2)
 - **[COMPLETE]** Implemented Phase D screenshot pipeline and Access Logs viewer end-to-end code path
