@@ -6,13 +6,18 @@ export interface AccessLog {
   site_id: string;
   timestamp: string;
   ip_address: string;
-  user_agent: string;
-  path: string;
+  user_agent: string | null;
+  url: string;
   allowed: boolean;
   reason: string;
-  country_code: string | null;
-  city: string | null;
-  vpn_detected: boolean;
+  ip_country: string | null;
+  ip_city: string | null;
+  ip_lat: number | null;
+  ip_lng: number | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  gps_accuracy: number | null;
+  screenshot_url: string | null;
 }
 
 export interface ListAccessLogsResponse {

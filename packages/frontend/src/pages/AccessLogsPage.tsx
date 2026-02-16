@@ -20,7 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { accessLogApi, AccessLog } from '@/lib/accessLogApi';
+import { accessLogApi } from '@/lib/accessLogApi';
+import type { AccessLog } from '@/lib/accessLogApi';
+import { artifactsApi, extractS3Key } from '@/lib/artifactsApi';
 import { siteApi } from '@/lib/api';
 import { Loader2, Filter, Eye } from 'lucide-react';
 
@@ -36,6 +38,9 @@ export function AccessLogsPage() {
   }>({});
 
   const [selectedLog, setSelectedLog] = useState<AccessLog | null>(null);
+  const screenshotKey = selectedLog?.screenshot_url
+    ? extractS3Key(selectedLog.screenshot_url)
+    : null;
 
   const { data: sitesData } = useQuery({
     queryKey: ['sites', 1, 100],
@@ -45,6 +50,16 @@ export function AccessLogsPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['accessLogs', page, limit, filters],
     queryFn: () => accessLogApi.list({ page, limit, ...filters }),
+  });
+
+  const {
+    data: screenshotUrl,
+    isLoading: isScreenshotLoading,
+    error: screenshotError,
+  } = useQuery({
+    queryKey: ['artifact-presigned-url', screenshotKey],
+    queryFn: () => artifactsApi.getPresignedUrl(screenshotKey!),
+    enabled: Boolean(screenshotKey),
   });
 
   const handleFilterChange = (key: string, value: string | boolean | undefined) => {
@@ -204,11 +219,11 @@ export function AccessLogsPage() {
                         {log.ip_address}
                       </TableCell>
                       <TableCell className="text-gray-400 text-sm max-w-xs truncate">
-                        {log.path}
+                        {log.url}
                       </TableCell>
                       <TableCell className="text-gray-400">
-                        {log.country_code ? (
-                          <span className="font-mono">{log.country_code}</span>
+                        {log.ip_country ? (
+                          <span className="font-mono">{log.ip_country}</span>
                         ) : (
                           <span className="text-gray-600">—</span>
                         )}
@@ -299,11 +314,11 @@ export function AccessLogsPage() {
                 </div>
                 <div>
                   <Label>Country</Label>
-                  <p className="text-white">{selectedLog.country_code || '—'}</p>
+                  <p className="text-white">{selectedLog.ip_country || '—'}</p>
                 </div>
                 <div className="col-span-2">
                   <Label>Path</Label>
-                  <p className="text-white break-all">{selectedLog.path}</p>
+                  <p className="text-white break-all">{selectedLog.url}</p>
                 </div>
                 <div className="col-span-2">
                   <Label>Reason</Label>
@@ -311,12 +326,45 @@ export function AccessLogsPage() {
                 </div>
                 <div className="col-span-2">
                   <Label>User Agent</Label>
-                  <p className="text-white text-sm break-all">{selectedLog.user_agent}</p>
+                  <p className="text-white text-sm break-all">{selectedLog.user_agent || '—'}</p>
                 </div>
-                <div>
-                  <Label>VPN Detected</Label>
-                  <p className="text-white">{selectedLog.vpn_detected ? 'Yes' : 'No'}</p>
-                </div>
+                {selectedLog.screenshot_url && (
+                  <div className="col-span-2 space-y-2">
+                    <Label>Screenshot</Label>
+                    {isScreenshotLoading && (
+                      <div className="flex items-center gap-2 text-gray-400 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading screenshot...
+                      </div>
+                    )}
+
+                    {!isScreenshotLoading && screenshotError && (
+                      <p className="text-red-400 text-sm">Failed to load screenshot preview.</p>
+                    )}
+
+                    {!isScreenshotLoading && !screenshotError && !screenshotUrl && (
+                      <p className="text-gray-400 text-sm">Screenshot is not available.</p>
+                    )}
+
+                    {!isScreenshotLoading && screenshotUrl && (
+                      <a
+                        href={screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block"
+                      >
+                        <img
+                          src={screenshotUrl}
+                          alt="Blocked request screenshot"
+                          className="max-h-64 rounded border border-gray-700 object-contain"
+                        />
+                        <span className="mt-2 inline-block text-sm text-blue-400 hover:underline">
+                          Open full screenshot
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end">
                 <Button onClick={() => setSelectedLog(null)}>Close</Button>
