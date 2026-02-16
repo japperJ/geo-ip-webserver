@@ -11,8 +11,13 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   timeout: 30000,
+  globalTimeout: 120000,
+  maxFailures: 1,
+  globalSetup: './e2e/global.setup.ts',
   use: {
     baseURL,
+    actionTimeout: 10000,
+    navigationTimeout: 15000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -40,6 +45,7 @@ export default defineConfig({
         command: 'npm run dev -- --host 127.0.0.1 --port 5173',
         url: 'http://localhost:5173',
         reuseExistingServer: !process.env.CI,
-        timeout: 120000,
+        timeout: 60000,
       },
 });
+
