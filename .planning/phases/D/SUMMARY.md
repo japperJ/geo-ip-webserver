@@ -2,6 +2,7 @@
 phase: D
 plan: 0
 status: complete
+gate_status: passed
 tasks_completed: 3/3
 commits:
   - b6952f3
@@ -35,6 +36,32 @@ decisions:
 
 # Phase D Summary
 
+## GAP-CLOSURE Evidence (HUMAN_NEEDED → PASSED)
+
+Added deterministic Phase-D-only integration evidence for the screenshot pipeline gate:
+
+- New test: `packages/backend/src/tests/integration/screenshotPipeline.test.ts`
+  - Proves blocked request is denied by `ipAccessControl` and creates an access log row.
+  - Proves screenshot job enqueue to BullMQ queue `screenshots` with `capture` job name.
+  - Runs a live worker consumer in-test to process queue jobs asynchronously.
+  - Proves PNG object upload to MinIO/S3 and DB linkage (`access_logs.screenshot_url` non-null).
+  - Verifies object metadata (`Content-Type: image/png`) and PNG signature bytes.
+  - Verifies backend artifacts endpoint returns a pre-signed URL that fetches bytes successfully (HTTP 200).
+
+- Added dedicated script for repeatability:
+  - `packages/backend/package.json` → `test:integration:screenshot`
+
+- Precision-hardening fix discovered during closure:
+  - `packages/workers/src/db.ts` now performs precision-tolerant `(id, timestamp)` matching when writing `screenshot_url` and fails loudly if no row matches.
+
+- Route robustness hardening for artifacts key paths:
+  - `packages/backend/src/routes/gdpr.ts` now supports both `/api/artifacts/:key` and `/api/artifacts/*` through a shared handler, preserving RBAC and presign behavior.
+
+### Repro command (automated)
+
+With local test infra + MinIO credentials configured:
+- `npm run test:integration:screenshot -w packages/backend`
+
 ## What Was Done
 
 Implemented all requested Phase D sub-plans in order:
@@ -64,6 +91,13 @@ Implemented all requested Phase D sub-plans in order:
 ## Verification
 
 Executed during implementation:
+
+- `npm run test:integration:screenshot -w packages/backend`
+  - Result: **pass** (1/1)
+- `npm run build -w packages/backend`
+  - Result: **pass**
+- `npm run build -w packages/workers`
+  - Result: **pass**
 
 - `npm test -w packages/backend -- src/services/__tests__/AccessLogService.test.ts`
   - Result: **pass** (6/6 tests)

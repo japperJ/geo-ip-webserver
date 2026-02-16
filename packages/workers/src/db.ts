@@ -25,14 +25,22 @@ function createDbPool(): Pool {
 const dbPool = createDbPool();
 
 export async function updateAccessLogScreenshotUrl(params: UpdateAccessLogScreenshotUrlParams): Promise<void> {
-  await dbPool.query(
+  const result = await dbPool.query(
     `
       UPDATE access_logs
       SET screenshot_url = $3
-      WHERE id = $1 AND timestamp = $2::timestamptz
+      WHERE id = $1
+        AND (
+          timestamp = $2::timestamptz
+          OR timestamp BETWEEN ($2::timestamptz - INTERVAL '1 second') AND ($2::timestamptz + INTERVAL '1 second')
+        )
     `,
     [params.id, params.timestamp, params.screenshotUrl]
   );
+
+  if ((result.rowCount || 0) === 0) {
+    throw new Error(`Failed to link screenshot to access log id=${params.id} timestamp=${params.timestamp}`);
+  }
 }
 
 export async function closeDbPool(): Promise<void> {
