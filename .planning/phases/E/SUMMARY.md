@@ -2,15 +2,17 @@
 phase: E
 plan: 0
 status: complete
-tasks_completed: 3/3
+tasks_completed: 4/4
 commits:
   - e071fdc
   - 5e47e4d
+  - 1cfe668
 files_modified:
   - packages/backend/src/routes/accessLogs.ts
   - packages/backend/src/routes/__tests__/accessLogsExportCsv.test.ts
   - packages/frontend/src/lib/accessLogApi.ts
   - packages/frontend/src/pages/AccessLogsPage.tsx
+  - packages/frontend/e2e/access-logs-export-csv.spec.ts
 deviations:
   - "Adjusted boolean query parsing for allowed filter to correctly support ?allowed=false in both list and export routes."
 decisions:
@@ -47,3 +49,14 @@ decisions:
 - `npm test -w packages/backend -- src/routes/__tests__/accessLogsExportCsv.test.ts` ✅ (3/3 passing)
 - `npm run build -w packages/backend` ✅
 - `npm run build -w packages/frontend` ✅
+
+## GAP-CLOSURE Evidence (HUMAN_NEEDED removed)
+- Added deterministic browser-level proof test: `packages/frontend/e2e/access-logs-export-csv.spec.ts`.
+- The test intercepts and fulfills `GET /api/sites/:siteId/access-logs/export` with CSV download headers and payload, then verifies:
+  - a real Playwright `download` event is emitted,
+  - the downloaded filename is `.csv` (`access-logs-test.csv`),
+  - downloaded file contents match expected CSV payload,
+  - export request query includes active UI filters (`allowed=false`, `ip=203.0.113`),
+  - page URL remains unchanged during export (anti-regression against navigation-based downloads).
+- Focused run result:
+  - `PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test --project=chromium --no-deps e2e/access-logs-export-csv.spec.ts` ✅ (1/1 passing, 3.6s)
