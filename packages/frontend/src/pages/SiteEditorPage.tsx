@@ -84,14 +84,14 @@ export function SiteEditorPage() {
     if (site) {
       setValue('slug', site.slug);
       setValue('name', site.name);
-      setValue('hostname', site.hostname);
+      setValue('hostname', site.hostname ?? '');
       setValue('access_mode', site.access_mode);
       setValue('ip_allowlist_text', ipArrayToText(site.ip_allowlist));
       setValue('ip_denylist_text', ipArrayToText(site.ip_denylist));
-      setValue('country_allowlist_text', site.country_allowlist.join('\n'));
-      setValue('country_denylist_text', site.country_denylist.join('\n'));
-      setValue('vpn_detection_enabled', site.vpn_detection_enabled);
-      setValue('is_active', site.is_active);
+      setValue('country_allowlist_text', (site.country_allowlist ?? []).join('\n'));
+      setValue('country_denylist_text', (site.country_denylist ?? []).join('\n'));
+      setValue('vpn_detection_enabled', site.block_vpn_proxy ?? false);
+      setValue('is_active', site.enabled ?? true);
       
       // Set geofence data
       if (site.geofence_type) {
@@ -163,19 +163,27 @@ export function SiteEditorPage() {
         .split('\n')
         .map((s) => s.trim().toUpperCase())
         .filter((s) => s !== ''),
-      vpn_detection_enabled: data.vpn_detection_enabled,
-      is_active: data.is_active,
+      block_vpn_proxy: data.vpn_detection_enabled,
+      enabled: data.is_active,
       geofence_type: geofence?.type || null,
       geofence_polygon: geofence?.polygon || null,
       geofence_center: geofence?.center || null,
       geofence_radius_km: geofence?.radius_km || null,
     };
 
-    if (isEditMode) {
-      const { slug, ...updatePayload } = payload;
-      await updateMutation.mutateAsync(updatePayload);
-    } else {
-      await createMutation.mutateAsync(payload as CreateSiteInput);
+    try {
+      if (isEditMode) {
+        const { slug, ...updatePayload } = payload;
+        await updateMutation.mutateAsync(updatePayload as UpdateSiteInput);
+      } else {
+        await createMutation.mutateAsync(payload as CreateSiteInput);
+      }
+    } catch (error: any) {
+      const apiMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        'Failed to save site. Please check your inputs and try again.';
+      alert(apiMessage);
     }
   };
 
@@ -220,7 +228,17 @@ export function SiteEditorPage() {
                 <Label htmlFor="slug">Slug *</Label>
                 <Input
                   id="slug"
-                  {...register('slug', { required: 'Slug is required' })}
+                  {...register('slug', {
+                    required: 'Slug is required',
+                    minLength: {
+                      value: 3,
+                      message: 'Slug must be at least 3 characters',
+                    },
+                    pattern: {
+                      value: /^[a-z0-9-]+$/,
+                      message: 'Slug must use lowercase letters, numbers, and hyphens only',
+                    },
+                  })}
                   disabled={isEditMode}
                   placeholder="my-site"
                 />

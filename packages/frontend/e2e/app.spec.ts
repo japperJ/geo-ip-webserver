@@ -81,6 +81,14 @@ test.describe('Site Management', () => {
     await expect(page.getByText(/Invalid IP addresses/i)).toBeVisible();
     await expect(page.getByText(/invalid-ip/i)).toBeVisible();
   });
+
+  test('should show delete action for super admin on sites list', async ({ page }) => {
+    await page.goto('/sites');
+    await page.waitForLoadState('networkidle');
+
+    // Super admin should have at least one Delete action available in site rows
+    await expect(page.getByRole('button', { name: 'Delete' }).first()).toBeVisible();
+  });
 });
 
 test.describe('Access Logs', () => {
