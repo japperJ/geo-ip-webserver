@@ -130,14 +130,15 @@ docker-compose -f docker-compose.prod.yml exec backend npm run migrate:up
 
 ```bash
 # Using curl
-curl -X POST http://localhost:3000/api/sites \
+curl -X POST http://localhost:3001/api/sites \
   -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <SUPER_ADMIN_JWT>" \
   -d '{
     "slug": "admin",
     "name": "Admin Dashboard",
     "hostname": "admin.yourdomain.com",
-    "access_mode": "open",
-    "is_active": true
+        "access_mode": "ip_only",
+        "enabled": true
   }'
 ```
 

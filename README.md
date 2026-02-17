@@ -188,22 +188,46 @@ VITE_API_URL=http://localhost:3000
 
 ## API Endpoints
 
-### Sites
+### Authentication
 
-- `GET /api/sites` - List all sites (paginated)
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+### Sites and Access Control
+
+- `GET /api/sites` - List accessible sites (paginated)
 - `GET /api/sites/:id` - Get site by ID
-- `POST /api/sites` - Create new site
-- `PATCH /api/sites/:id` - Update site
-- `DELETE /api/sites/:id` - Delete site
+- `POST /api/sites` - Create site (super admin)
+- `PATCH /api/sites/:id` - Update site (site admin/super admin)
+- `DELETE /api/sites/:id` - Delete site (super admin)
+- `POST /api/sites/:id/validate-location` - Validate GPS location against site geofence
 
-### Access Logs
+### Site Roles and Users
+
+- `GET /api/sites/:id/roles` - List site role assignments
+- `POST /api/sites/:id/roles` - Grant/update site role (super admin)
+- `DELETE /api/sites/:id/roles/:userId` - Revoke site role (super admin)
+- `GET /api/users` - List users (super admin)
+- `PATCH /api/users/:id` - Update global role (super admin)
+- `DELETE /api/users/:id` - Soft-delete user (super admin)
+
+### Access Logs and Content
 
 - `GET /api/access-logs` - List access logs (filterable, paginated)
 - `GET /api/access-logs/:id` - Get log entry by ID
+- `GET /api/sites/:siteId/access-logs/export` - Export site logs as CSV
+- `GET /api/sites/:siteId/content` - List site content
+- `POST /api/sites/:siteId/content/upload` - Upload content (site admin)
+- `GET /api/sites/:siteId/content/download?key=...` - Generate short-lived download URL
+- `DELETE /api/sites/:siteId/content/:key` - Delete content (site admin)
 
-### Health
+### Health and Readiness
 
-- `GET /health` - Health check endpoint
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
 
 ## Database Migrations
 
@@ -303,7 +327,7 @@ The application includes complete Docker support for easy production deployment.
 4. **Check service health**
    ```bash
    docker-compose ps
-   curl http://localhost:8080/health
+   curl http://localhost:3001/health
    ```
 
 5. **View logs**
@@ -376,23 +400,15 @@ server {
 
 ## Architecture
 
-### Phase 1: MVP (Current)
+### Current (Phase 5 Complete)
 
-- IP-based access control
-- Country-based filtering
-- VPN detection
-- Access logging with IP anonymization
-- Admin UI for site management
-- Cron jobs for log retention
-
-### Future Phases
-
-- Multi-region deployment
-- Advanced rate limiting
-- Screenshot capture
-- Bot detection
-- CAPTCHA integration
-- Advanced analytics
+- Multi-tenant site management with RBAC (`super_admin`, site `admin`/`viewer`)
+- IP-based access controls (allowlist/denylist, country filters, VPN/proxy blocking)
+- GPS geofencing (polygon/radius with validation path)
+- Access logging with IP anonymization and CSV export
+- Screenshot artifact integration for blocked requests
+- GDPR data rights endpoints (consent, export, deletion)
+- Production hardening: security headers, rate limiting, metrics, health/readiness checks
 
 ## Development Guidelines
 

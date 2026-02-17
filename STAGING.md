@@ -1,6 +1,6 @@
 # Staging Deployment Guide
 
-This document outlines the staging deployment for Phase 1 MVP.
+This document outlines the staging deployment for the current production-ready release (Phase 5 complete).
 
 ## Staging Environment Specifications
 
@@ -152,10 +152,10 @@ docker-compose -f docker-compose.prod.yml exec backend npm run migrate:up
 
 ```bash
 # Test backend health
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 
 # Expected response:
-# {"status":"ok","timestamp":"...","services":{"database":true}}
+# {"status":"healthy","database":"connected","redis":"connected"}
 
 # Test frontend
 curl http://localhost:8080
@@ -182,18 +182,20 @@ docker-compose -f docker-compose.yml exec redis redis-cli CONFIG GET maxmemory-p
 ### 9. Create Test Site
 
 ```bash
-curl -X POST http://localhost:3000/api/sites \
+curl -X POST http://localhost:3001/api/sites \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <SUPER_ADMIN_JWT>" \
   -d '{
     "slug": "test-site",
     "name": "Test Site",
     "hostname": "test.staging.example.com",
-    "access_mode": "open",
-    "is_active": true
+    "access_mode": "ip_only",
+    "enabled": true
   }'
 
 # Verify site was created
-curl http://localhost:3000/api/sites
+curl http://localhost:3001/api/sites \
+  -H "Authorization: Bearer <SUPER_ADMIN_JWT>"
 ```
 
 ### 10. Configure Firewall (Optional but Recommended)
@@ -335,14 +337,12 @@ docker-compose -f docker-compose.prod.yml exec -T postgres \
 
 ## Known Issues and Limitations
 
-### Phase 1 MVP Limitations
+### Current Operational Notes
 
-- No authentication/authorization implemented yet
-- Single-server deployment only
-- No CDN integration
-- No advanced rate limiting
-- No bot detection
-- Basic monitoring only
+- Authentication is required for admin APIs (`/api/auth/*` + JWT bearer for protected routes).
+- Site/user management follows RBAC (`super_admin` globally; site `admin`/`viewer`).
+- Screenshot artifacts depend on Redis + object storage availability.
+- GeoIP features degrade gracefully if MaxMind DB files are missing.
 
 ### Planned Improvements (Future Phases)
 
@@ -402,9 +402,10 @@ chmod +x ~/update-geoip.sh
 | Date | Version | Deployed By | Notes |
 |------|---------|-------------|-------|
 | 2026-02-14 | 1.0.0-mvp | OpenCode | Initial Phase 1 MVP deployment |
+| 2026-02-17 | 1.0.0-phase5 | Copilot | Documentation aligned with current API/RBAC model |
 
 ---
 
 **Deployment Status:** ✅ READY FOR STAGING  
-**Last Updated:** 2026-02-14  
-**Phase:** 1 (MVP - IP Access Control)
+**Last Updated:** 2026-02-17  
+**Phase:** 5 (Production Hardening Complete)
