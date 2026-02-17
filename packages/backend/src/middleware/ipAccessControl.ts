@@ -158,7 +158,7 @@ export async function ipAccessControl(
   }
 
   // 3. Lookup GeoIP for country filtering and VPN detection
-  const geoData = request.server.geoip.lookup(clientIP);
+  const geoData = request.server.geoip?.lookup(clientIP);
 
   // 4. Check country denylist
   if (site.country_denylist && site.country_denylist.length > 0) {
@@ -220,7 +220,12 @@ export async function ipAccessControl(
 
   // 6. VPN/Proxy detection (if enabled)
   if (site.block_vpn_proxy) {
-    const anonCheck = request.server.geoip.isAnonymous(clientIP);
+    const anonCheck = request.server.geoip?.isAnonymous(clientIP) || {
+      isVpn: false,
+      isProxy: false,
+      isHosting: false,
+      isTor: false,
+    };
     
     if (anonCheck.isVpn || anonCheck.isProxy || anonCheck.isHosting || anonCheck.isTor) {
       request.log.info({ clientIP, anonCheck, reason: 'vpn_proxy_detected' }, 'Access denied');

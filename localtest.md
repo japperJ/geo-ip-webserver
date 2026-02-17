@@ -165,3 +165,102 @@ Example set:
 When done testing hostname routing:
 - Remove temporary entries from hosts file.
 - `docker compose down` (or `docker compose down -v` if you want a clean local reset).
+
+## 9) Test matrix: IP + Country blocking on a public file URL
+
+Target example URL:
+
+- `http://test.hest.local:3001/s/56ee3df7-8735-4663-9c95-5ba02c5c8715/content/test.txt`
+
+### Important behavior
+
+- Blocking decisions happen **before** file redirect/download.
+- If blocked, backend returns `403` JSON with `reason`.
+- If allowed, backend returns `302` redirect to signed object URL.
+
+### A) IP denylist test (recommended first)
+
+In site settings, set:
+- `access_mode = ip_only` (or `ip_and_geo`)
+- `ip_denylist` includes `203.0.113.10/32`
+
+Then request with simulated client IP:
+
+```bash
+curl -i -H "X-Forwarded-For: 203.0.113.10" "http://test.hest.local:3001/s/56ee3df7-8735-4663-9c95-5ba02c5c8715/content/test.txt"
+```
+
+Expected:
+- `HTTP/1.1 403`
+- body `reason: "ip_denylist"`
+
+### B) IP allowlist test
+
+In site settings, set:
+- `ip_allowlist` includes `198.51.100.7/32`
+- keep denylist empty for this test
+
+1) Non-allowlisted IP:
+
+```bash
+curl -i -H "X-Forwarded-For: 198.51.100.99" "http://test.hest.local:3001/s/56ee3df7-8735-4663-9c95-5ba02c5c8715/content/test.txt"
+```
+
+Expected:
+- `403`
+- `reason: "ip_not_in_allowlist"`
+
+2) Allowlisted IP:
+
+```bash
+curl -i -H "X-Forwarded-For: 198.51.100.7" "http://test.hest.local:3001/s/56ee3df7-8735-4663-9c95-5ba02c5c8715/content/test.txt"
+```
+
+Expected:
+- `302` (allowed path)
+
+### C) Country denylist / allowlist tests
+
+These require GeoIP databases loaded in backend container.
+
+If GeoIP is missing, country is `unknown` and country tests are not reliable.
+
+Quick check:
+- Backend logs should **not** show: `GeoIP databases not found - GeoIP functionality disabled`
+
+If GeoIP is loaded:
+
+1) Set `country_denylist` to include the test IP country (e.g. `US`) and call URL with an IP from that country.
+- Expected: `403`, `reason: "country_blocked"`.
+
+2) Set `country_allowlist` to only a specific country.
+- Test IP outside allowlist -> `403`, `reason: "country_not_allowed"`.
+- Test IP inside allowlist -> `302`.
+
+### D) Read result in Access Logs
+
+Open **Access Logs** and verify for each attempt:
+- `allowed` = true/false
+- `reason` matches expected (`ip_denylist`, `ip_not_in_allowlist`, `country_blocked`, `country_not_allowed`)
+- `ip_country` populated for country-based checks when GeoIP is enabled
+
+### E) One-command automated policy smoke
+
+Run:
+
+```bash
+npm run smoke:policy
+```
+
+Optional overrides:
+
+- `SMOKE_SITE_ID` (target site UUID)
+- `SMOKE_SITE_HOST` (hostname, default `test.hest.local`)
+- `SMOKE_CONTENT_FILE` (default `test.txt`)
+- `SMOKE_CLIENT_IP_CIDR` (actual test client CIDR, default `192.168.32.1/32`)
+- `SMOKE_ALLOWLIST_NONMATCH_CIDR` (non-matching CIDR for allowlist mismatch test)
+
+The script:
+- runs denylist/allowlist/country sanity checks against the public file URL,
+- validates expected HTTP status + reason,
+- and restores the original site policy automatically.

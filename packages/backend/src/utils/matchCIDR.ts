@@ -1,4 +1,6 @@
-import * as ipaddr from 'ipaddr.js';
+import * as ipaddrNamespace from 'ipaddr.js';
+
+const ipaddr = (ipaddrNamespace as any).default ?? ipaddrNamespace;
 
 /**
  * Validate if a string is a valid IP address
