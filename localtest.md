@@ -264,3 +264,26 @@ The script:
 - runs denylist/allowlist/country sanity checks against the public file URL,
 - validates expected HTTP status + reason,
 - and restores the original site policy automatically.
+
+### F) One-command automated geofence smoke
+
+Run:
+
+```bash
+npm run smoke:geofence
+```
+
+What it does:
+- temporarily configures a **radius geofence** for the target site,
+- calls `POST /api/sites/:id/validate-location` with inside/outside coordinates,
+- expects:
+  - inside => `allowed: true`
+  - outside => `allowed: false`, `reason: outside_geofence`,
+- restores original site `access_mode` + geofence fields afterward.
+
+Useful overrides:
+- `SMOKE_SITE_ID`
+- `SMOKE_BACKEND_PORT` (default `3001`)
+- `SMOKE_GEOFENCE_CENTER_LAT`, `SMOKE_GEOFENCE_CENTER_LNG`, `SMOKE_GEOFENCE_RADIUS_KM`
+- `SMOKE_GEOFENCE_INSIDE_LAT`, `SMOKE_GEOFENCE_INSIDE_LNG`
+- `SMOKE_GEOFENCE_OUTSIDE_LAT`, `SMOKE_GEOFENCE_OUTSIDE_LNG`

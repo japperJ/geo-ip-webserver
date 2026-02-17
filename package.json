@@ -15,6 +15,7 @@
     "clean": "npm run clean --workspaces && rm -rf node_modules",
     "smoke:http": "node scripts/smoke/http-smoke.mjs",
     "smoke:policy": "node scripts/smoke/policy-smoke.mjs",
+    "smoke:geofence": "node scripts/smoke/geofence-smoke.mjs",
     "smoke:e2e": "node scripts/smoke/e2e-smoke.mjs",
     "smoke": "npm run smoke:http && npm run smoke:e2e"
   },
