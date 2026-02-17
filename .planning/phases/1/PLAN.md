@@ -371,3 +371,7 @@
 - Ensure AccessLogService tests are deterministic (avoid async timing flakiness).
 - Access mode enum values must match requirements: `disabled`, `ip_only`, `geo_only`, `ip_and_geo` (Phase 1 uses `disabled`/`ip_only` only).
 - Avoid Phase 3 scope creep in site resolution: no hostname-based resolution or caching in Phase 1.
+- Baseline structure: workspaces at `packages/backend`, `packages/frontend`, `packages/workers`; backend Fastify + TS, frontend React + Vite.
+- Migrations: `packages/backend/migrations/` with `node-pg-migrate` scripts (`npm run migrate:up|down|create -w packages/backend`), config in `packages/backend/.migrations.json`.
+- DEV-006 migration file present: `packages/backend/migrations/1771065929887_access-logs-table.sql`; applied via `psql` (access_logs exists), but `node-pg-migrate up` failed on mixed JS/SQL migrations and did not populate `pgmigrations`.
+- Test runners: backend `vitest` via `packages/backend/vitest.config.ts`; frontend `vitest` + Playwright via `packages/frontend/playwright.config.ts`.
