@@ -26,7 +26,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: geo-ip-redis-dev
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     ports:
       - "6380:6379"
     volumes:
@@ -70,7 +70,7 @@ services:
       /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
       /usr/bin/mc mb myminio/site-assets --ignore-existing;
       /usr/bin/mc mb myminio/screenshots --ignore-existing;
-      /usr/bin/mc anonymous set download myminio/site-assets;
+      /usr/bin/mc anonymous set none myminio/site-assets;
       exit 0;
       "
     networks:

@@ -56,12 +56,26 @@ export class ScreenshotService {
   }
 }
 
-export function createScreenshotService(fastify: FastifyInstance): ScreenshotService {
-  const redisHost = process.env.REDIS_HOST || 'localhost';
-  const redisPort = parseInt(process.env.REDIS_PORT || '6380');
+function getRedisConnection(): { host: string; port: number; username?: string; password?: string } {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    const parsed = new URL(redisUrl);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '6379', 10),
+      username: parsed.username || undefined,
+      password: parsed.password || undefined,
+    };
+  }
 
-  return new ScreenshotService({
-    host: redisHost,
-    port: redisPort
-  });
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6380', 10),
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+  };
+}
+
+export function createScreenshotService(_fastify: FastifyInstance): ScreenshotService {
+  return new ScreenshotService(getRedisConnection());
 }

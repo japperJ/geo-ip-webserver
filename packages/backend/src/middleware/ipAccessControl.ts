@@ -5,7 +5,6 @@ import { anonymizeIP } from '../utils/anonymizeIP.js';
 import { AccessLogService } from '../services/AccessLogService.js';
 import { Site } from '../models/Site.js';
 import { pool } from '../db/index.js';
-import { accessControlDecisions } from '../plugins/metrics.js';
 
 // Extend FastifyRequest to include site and geoip
 declare module 'fastify' {
@@ -15,7 +14,45 @@ declare module 'fastify' {
 }
 
 // Initialize AccessLogService
-const accessLogService = new AccessLogService(pool);
+let accessLogService = new AccessLogService(pool);
+
+export function setIpAccessControlAccessLogService(service: AccessLogService) {
+  accessLogService = service;
+}
+
+function normalizeHostname(value: string): string {
+  const host = value.trim().toLowerCase();
+  const withoutPort = host.startsWith('[')
+    ? host.replace(/^\[([^\]]+)\](?::\d+)?$/, '$1')
+    : host.split(':')[0];
+
+  return withoutPort;
+}
+
+function buildRequestUrl(request: FastifyRequest, site: Site): string {
+  const requestHostname = request.hostname;
+  const hostHeader = typeof request.headers.host === 'string'
+    ? request.headers.host.trim()
+    : '';
+  const hostHeaderHostname = hostHeader ? normalizeHostname(hostHeader) : '';
+
+  const allowedHostnames = new Set([
+    requestHostname,
+    site.hostname,
+  ].filter(Boolean).map((host) => normalizeHostname(host!)));
+
+  const authority =
+    hostHeader && allowedHostnames.has(hostHeaderHostname)
+      ? hostHeader
+      : requestHostname;
+
+  const protocol = request.protocol === 'https' ? 'https' : 'http';
+  const requestPath = request.url.startsWith('/')
+    ? request.url
+    : `/${request.url}`;
+
+  return new URL(requestPath, `${protocol}://${authority}`).toString();
+}
 
 /**
  * IP-based access control middleware
@@ -29,6 +66,13 @@ export async function ipAccessControl(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
+  const pathname = request.url.split('?')[0];
+
+  // Always bypass documentation endpoints
+  if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+    return;
+  }
+
   const site = request.site;
 
   // Skip if no site or access control disabled
@@ -41,6 +85,8 @@ export async function ipAccessControl(
     return;
   }
 
+  const requestUrl = buildRequestUrl(request, site);
+
   // Extract client IP
   const clientIP = getClientIP(request);
   if (!clientIP) {
@@ -52,7 +98,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: 'unknown',
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'ip_extraction_failed',
       });
@@ -75,7 +121,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: anonymizeIP(clientIP),
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'ip_denylist',
       });
@@ -98,7 +144,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: anonymizeIP(clientIP),
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'ip_not_in_allowlist',
       });
@@ -125,7 +171,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: anonymizeIP(clientIP),
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'country_blocked',
         ip_country: country,
@@ -154,7 +200,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: anonymizeIP(clientIP),
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'country_not_allowed',
         ip_country: country || undefined,
@@ -184,7 +230,7 @@ export async function ipAccessControl(
         site_id: site.id,
         ip_address: anonymizeIP(clientIP),
         user_agent: request.headers['user-agent'] || null,
-        url: request.url,
+        url: requestUrl,
         allowed: false,
         reason: 'vpn_proxy_detected',
         ip_country: geoData?.countryCode,
@@ -207,7 +253,7 @@ export async function ipAccessControl(
     site_id: site.id,
     ip_address: anonymizeIP(clientIP),
     user_agent: request.headers['user-agent'] || null,
-    url: request.url,
+    url: requestUrl,
     allowed: true,
     reason: 'passed',
     ip_country: geoData?.countryCode,

@@ -56,7 +56,7 @@ export async function siteRoutes(fastify: FastifyInstance) {
         200: listSitesResponseSchema,
       },
     },
-  }, async (request, reply) => {
+  }, async (request, _reply) => {
     const user = request.user as JWTPayload;
 
     // Super admin sees all sites

@@ -16,7 +16,6 @@ export interface DataExportResult {
     email: string;
     createdAt: Date;
   };
-  accessLogs: any[];
   consents: ConsentRecord[];
   sites: any[];
 }
@@ -40,7 +39,6 @@ export class GDPRService {
   // Export all user data (Right to Access - GDPR Article 15)
   async exportUserData(userId: string): Promise<DataExportResult> {
     const result: DataExportResult = {
-      accessLogs: [],
       consents: [],
       sites: []
     };
@@ -53,15 +51,6 @@ export class GDPRService {
     if (userRes.rows[0]) {
       result.user = userRes.rows[0];
     }
-
-    // Access logs (last 90 days)
-    const logsRes = await this.db.query(
-      `SELECT * FROM access_logs 
-       WHERE timestamp >= NOW() - INTERVAL '90 days'
-       ORDER BY timestamp DESC`,
-      []
-    );
-    result.accessLogs = logsRes.rows;
 
     // Consents
     const consentsRes = await this.db.query(
@@ -99,17 +88,9 @@ export class GDPRService {
       // Delete consents
       await client.query('DELETE FROM gdpr_consents WHERE user_id = $1', [userId]);
 
-      // Anonymize access logs instead of deleting (for audit trail)
-      await client.query(
-        `UPDATE access_logs 
-         SET ip_address = '0.0.0.0'::inet,
-             gps_lat = NULL,
-             gps_lng = NULL,
-             user_agent = 'DELETED',
-             screenshot_url = NULL
-         WHERE timestamp >= NOW() - INTERVAL '90 days'`,
-        []
-      );
+      // Note: access_logs table has no user_id linkage and contains anonymous visitor data.
+      // These logs are retained for site audit purposes and are already anonymized (IP last octet zeroed).
+      // GDPR does not require deletion of legitimately anonymized data.
 
       // Delete user account
       await client.query('DELETE FROM users WHERE id = $1', [userId]);

@@ -11,6 +11,14 @@ This guide covers deploying the Geo-IP Webserver to production environments.
 - At least 2GB RAM, 20GB disk space
 - MaxMind GeoLite2 license key (free account)
 
+## Operational Smoke + Entrypoints (Phase G)
+
+For local operational verification and environment parity checks, use the canonical entrypoint matrix in `.planning/ENTRYPOINTS.md` and run the single smoke command from repo root:
+
+- `npm run smoke`
+
+This smoke command is the default release-quality gate for validating health, docs reachability, and minimal auth sanity across canonical docker entrypoints.
+
 ## Deployment Options
 
 ### Option 1: Docker Compose (Recommended)

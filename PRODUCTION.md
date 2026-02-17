@@ -208,6 +208,20 @@ docker-compose ps
 docker-compose exec backend npm run migrate:up
 ```
 
+### 3.1 Verify Redis queue durability policy
+
+For BullMQ queue reliability (screenshot pipeline), Redis should use `maxmemory-policy noeviction`.
+
+- Avoid `allkeys-*`/`volatile-*` eviction modes for queue-critical environments.
+- `noeviction` makes pressure explicit instead of silently dropping queue metadata/jobs.
+
+Verify policy:
+
+```bash
+docker-compose -f docker-compose.monitoring.yml exec redis redis-cli CONFIG GET maxmemory-policy
+# expected output includes: maxmemory-policy / noeviction
+```
+
 ### 4. Create Super Admin User
 
 ```bash

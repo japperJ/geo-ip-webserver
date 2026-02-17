@@ -163,6 +163,22 @@ curl http://localhost:8080
 # Should return HTML
 ```
 
+### 8.1 Verify Redis queue reliability policy (`noeviction`)
+
+For integration/staging environments that run BullMQ-based screenshot jobs, Redis must use `maxmemory-policy noeviction`.
+
+Why this matters:
+
+- Eviction modes like `allkeys-lru` can silently remove queue keys under memory pressure.
+- `noeviction` trades silent data loss for explicit backpressure/errors, which is safer for job integrity.
+
+Verification:
+
+```bash
+# Should print: maxmemory-policy / noeviction
+docker-compose -f docker-compose.yml exec redis redis-cli CONFIG GET maxmemory-policy
+```
+
 ### 9. Create Test Site
 
 ```bash

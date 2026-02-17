@@ -1,20 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add JWT token to all requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import { api } from './api';
 
 // Access Log types
 export interface AccessLog {
@@ -22,13 +6,18 @@ export interface AccessLog {
   site_id: string;
   timestamp: string;
   ip_address: string;
-  user_agent: string;
-  path: string;
+  user_agent: string | null;
+  url: string;
   allowed: boolean;
   reason: string;
-  country_code: string | null;
-  city: string | null;
-  vpn_detected: boolean;
+  ip_country: string | null;
+  ip_city: string | null;
+  ip_lat: number | null;
+  ip_lng: number | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  gps_accuracy: number | null;
+  screenshot_url: string | null;
 }
 
 export interface ListAccessLogsResponse {
@@ -51,6 +40,8 @@ export interface ListAccessLogsParams {
   limit?: number;
 }
 
+export type ExportAccessLogsParams = Pick<ListAccessLogsParams, 'allowed' | 'start_date' | 'end_date' | 'ip'>;
+
 // Access Log API functions
 export const accessLogApi = {
   list: async (params?: ListAccessLogsParams): Promise<ListAccessLogsResponse> => {
@@ -61,5 +52,12 @@ export const accessLogApi = {
   getById: async (id: string): Promise<AccessLog> => {
     const { data } = await api.get<AccessLog>(`/access-logs/${id}`);
     return data;
+  },
+
+  exportCsv: async (siteId: string, params?: ExportAccessLogsParams) => {
+    return api.get<Blob>(`/sites/${siteId}/access-logs/export`, {
+      params,
+      responseType: 'blob',
+    });
   },
 };

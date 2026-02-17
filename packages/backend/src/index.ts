@@ -1,12 +1,16 @@
 // @ts-nocheck
 import Fastify from 'fastify';
 import {
+  createJsonSchemaTransform,
+  jsonSchemaTransformObject,
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import redis from '@fastify/redis';
@@ -18,17 +22,23 @@ import { pool } from './db/index.js';
 import { siteRoutes } from './routes/sites.js';
 import { accessLogRoutes } from './routes/accessLogs.js';
 import { authRoutes } from './routes/auth.js';
+import { usersRoutes } from './routes/users.js';
 import { siteRoleRoutes } from './routes/siteRoles.js';
 import { gdprRoutes } from './routes/gdpr.js';
+import { contentRoutes } from './routes/content.js';
 import { createSiteResolutionMiddleware } from './middleware/siteResolution.js';
-import { ipAccessControl } from './middleware/ipAccessControl.js';
+import { ipAccessControl, setIpAccessControlAccessLogService } from './middleware/ipAccessControl.js';
+import { gpsAccessControl } from './middleware/gpsAccessControl.js';
 import { authenticateJWT } from './middleware/authenticateJWT.js';
 import { CacheService } from './services/CacheService.js';
 import { createScreenshotService } from './services/ScreenshotService.js';
+import { GeofenceService } from './services/GeofenceService.js';
 import { AccessLogService } from './services/AccessLogService.js';
+import { SiteService } from './services/SiteService.js';
 import { startLogRetentionJob } from './jobs/logRetention.js';
 import { getClientIP } from './utils/getClientIP.js';
 import { existsSync } from 'fs';
+import { z } from 'zod';
 
 // Extend Fastify instance type
 declare module 'fastify' {
@@ -60,13 +70,32 @@ async function buildServer() {
     credentials: true,
   });
 
+  await server.register(swagger, {
+    openapi: {
+      info: {
+        title: 'Geo-IP Webserver API',
+        version: '1.0.0',
+      },
+    },
+    transform: createJsonSchemaTransform({
+      skipList: ['/documentation', '/documentation/json', '/documentation/yaml', '/documentation/static/*'],
+    }),
+    transformObject: jsonSchemaTransformObject,
+  });
+
+  await server.register(swaggerUi, {
+    routePrefix: '/documentation',
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+  });
+
   // Phase 5: Enhanced helmet configuration with CSP
-  await server.register(helmet, {
+  await server.register(helmet, (instance) => ({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"], // Required for some CSS-in-JS
+        scriptSrc: ["'self'", ...instance.swaggerCSP.script],
+        styleSrc: ["'self'", "'unsafe-inline'", ...instance.swaggerCSP.style],
         imgSrc: ["'self'", "data:", "https://*.openstreetmap.org"],
         fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
@@ -80,7 +109,7 @@ async function buildServer() {
       includeSubDomains: true,
       preload: true,
     },
-  });
+  }));
 
   // Decorate with pg pool (instead of plugin for Fastify 5 compatibility)
   server.decorate('pg', pool);
@@ -132,6 +161,11 @@ async function buildServer() {
   // Initialize access log service and inject screenshot service
   const accessLogService = new AccessLogService(pool);
   accessLogService.setScreenshotService(screenshotService);
+  setIpAccessControlAccessLogService(accessLogService);
+  
+  // Initialize geofence service (Phase 2)
+  const geofenceService = new GeofenceService(server);
+  const siteService = new SiteService(pool);
 
   // Register GeoIP plugin (optional if databases not present)
   const cityDbPath = process.env.GEOIP_CITY_DB_PATH || './data/GeoLite2-City.mmdb';
@@ -151,10 +185,69 @@ async function buildServer() {
 
   // Register global middleware hooks (run on every request in order)
   // 1. Site resolution (attaches site to request) - uses cache service
-  // 2. IP access control (uses site config for access decisions)
+  // 2. Path-based site resolution for /s/:siteId/*
+  // 3. IP access control (uses site config for access decisions)
+  // 4. GPS access control (validates GPS coordinates and geofencing)
   const siteResolutionMiddleware = createSiteResolutionMiddleware(cacheService);
   server.addHook('onRequest', siteResolutionMiddleware);
+  server.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+
+    if (!pathname.startsWith('/s/')) {
+      return;
+    }
+
+    if (request.site) {
+      return;
+    }
+
+    const [, siteId] = pathname.split('/').filter(Boolean);
+    const parsed = z.string().uuid().safeParse(siteId);
+
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'Bad Request',
+        message: 'Invalid siteId parameter',
+      });
+    }
+
+    const site = await siteService.getById(parsed.data);
+
+    if (!site || !site.enabled) {
+      return reply.code(404).send({
+        error: 'Not Found',
+        message: 'Site not found',
+      });
+    }
+
+    request.site = site;
+  });
   server.addHook('onRequest', ipAccessControl);
+  
+  // GPS access control middleware wrapper
+  server.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+
+    // Always bypass documentation endpoints
+    if (pathname === '/documentation' || pathname.startsWith('/documentation/')) {
+      return;
+    }
+
+    // Skip if no site attached or GPS not required
+    if (!request.site || 
+        request.site.access_mode === 'disabled' || 
+        request.site.access_mode === 'ip_only') {
+      return;
+    }
+    
+    // Call GPS middleware with proper context
+    // Pass geoipService only if available (graceful degradation)
+    await gpsAccessControl(request, reply, {
+      site: request.site,
+      geoipService: server.geoip || undefined,
+      geofenceService,
+    });
+  });
 
   // Health check endpoint
   server.get('/health', async () => {
@@ -210,10 +303,12 @@ async function buildServer() {
 
   // Register routes
   await server.register(authRoutes, { prefix: '/api/auth' });
+  await server.register(usersRoutes, { prefix: '/api/users' });
   await server.register(siteRoutes, { prefix: '/api' });
   await server.register(siteRoleRoutes, { prefix: '/api/sites' });
   await server.register(accessLogRoutes, { prefix: '/api' });
   await server.register(gdprRoutes); // Phase 4: GDPR routes
+  await server.register(contentRoutes);
 
   // Test route for IP access control (can be removed after testing)
   server.get('/test-protected', async (request) => {

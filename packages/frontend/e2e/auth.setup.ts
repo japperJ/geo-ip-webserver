@@ -3,7 +3,7 @@ import { test as setup, expect } from '@playwright/test';
 const authFile = 'playwright/.auth/user.json';
 
 setup('authenticate as super admin', async ({ page, request }) => {
-  const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
   
   // Register first user (becomes super_admin automatically)
   const registerResponse = await request.post(`${baseURL}/api/auth/register`, {
@@ -64,11 +64,28 @@ setup('authenticate as super admin', async ({ page, request }) => {
     expires: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 24 hours
   }]);
 
-  // Set localStorage with token for frontend use
+  // Fetch user info to store in localStorage
+  const meResponse = await request.get(`${baseURL}/api/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  
+  expect(meResponse.ok(), 'Failed to fetch user info').toBeTruthy();
+  const meData = await meResponse.json();
+  const userData = meData.user; // Extract the user object from { success: true, user: {...} }
+
+  // Debug logging
+  console.log('User data from /api/auth/me:', JSON.stringify(userData, null, 2));
+  console.log('User has role property?', 'role' in userData, 'Value:', userData.role);
+
+  // Set localStorage with token and user for frontend use
   await page.goto(baseURL);
-  await page.evaluate((token) => {
+  await page.evaluate(({ token, user }) => {
     localStorage.setItem('authToken', token);
-  }, accessToken);
+    localStorage.setItem('user', JSON.stringify(user));
+    console.log('LocalStorage set - user:', JSON.stringify(user, null, 2));
+  }, { token: accessToken, user: userData });
 
   // Save signed-in state to file
   await page.context().storageState({ path: authFile });

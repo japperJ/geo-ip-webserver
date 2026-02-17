@@ -10,6 +10,7 @@ export const testPool = new Pool({
 });
 
 // Clean up test database before all tests
+// Note: Database bootstrap happens in globalSetup (see vitest.config.ts)
 beforeAll(async () => {
   // Clean only access_logs, let test suites manage their sites
   await testPool.query('DELETE FROM access_logs');

@@ -77,6 +77,53 @@ Multi-site content delivery platform with geo-fencing, IP-based access control, 
    http://localhost:5173
    ```
 
+## Canonical Entrypoints + Smoke Verification (Phase G)
+
+Operational smoke verification is now standardized. Canonical entrypoints are also tracked in `.planning/ENTRYPOINTS.md`.
+
+### Entrypoint matrix
+
+| Mode | Surface | Base URL | Purpose |
+|---|---|---|---|
+| Docker full stack (**canonical smoke mode**) | Proxy (frontend + API + docs) | `http://localhost:8080` | Browser-level smoke and proxy parity checks |
+| Docker full stack (**canonical smoke mode**) | Direct backend | `http://localhost:3001` | Health/docs/auth HTTP smoke checks |
+| Dev hot reload | Frontend | `http://localhost:5173` | Local Vite development |
+| Dev hot reload | Backend | `http://localhost:3000` | Local Fastify development |
+
+### URLs to validate
+
+- Direct backend:
+   - `http://localhost:3001/health`
+   - `http://localhost:3001/documentation`
+   - `http://localhost:3001/documentation/json`
+- Proxy:
+   - `http://localhost:8080/documentation`
+   - `http://localhost:8080/documentation/json`
+
+### Single smoke command
+
+Run this after the docker full stack is up:
+
+```bash
+npm run smoke
+```
+
+What it runs:
+
+1. HTTP smoke (`npm run smoke:http`): backend health/docs + proxy docs + auth sanity (`register/login/me/refresh`)
+2. Browser smoke (`npm run smoke:e2e`): minimal Playwright smoke at proxy base URL
+
+Expected success markers include:
+
+- `✅ Phase G HTTP smoke PASSED`
+- `✅ Playwright smoke PASSED`
+
+If smoke fails:
+
+1. Confirm services are up (`docker-compose ps`).
+2. Check backend/frontend logs (`docker-compose logs backend frontend`).
+3. Re-run `npm run smoke` and use the first `[FAIL]` message to identify the failing gate.
+
 ## Project Structure
 
 ```
@@ -178,6 +225,29 @@ npm run migrate:create -w packages/backend -- migration_name
 npm test -w packages/backend
 ```
 
+Backend Vitest fail-fast defaults:
+- `testTimeout`: `30000ms`
+- `hookTimeout`: `30000ms`
+- `teardownTimeout`: `15000ms`
+
+### Frontend Unit Tests (Vitest)
+```bash
+npm test -w packages/frontend
+```
+
+Notes:
+- `npm test -w packages/frontend` now runs in **non-watch** mode (`vitest run`) so CI/local scripts terminate reliably.
+- Use watch mode explicitly when developing:
+
+```bash
+npm run test:watch -w packages/frontend
+```
+
+Frontend Vitest fail-fast defaults:
+- `testTimeout`: `15000ms`
+- `hookTimeout`: `15000ms`
+- `teardownTimeout`: `10000ms`
+
 ### Frontend E2E Tests
 ```bash
 # Run tests headless
@@ -186,6 +256,15 @@ npm run test:e2e -w packages/frontend
 # Run tests with UI
 npm run test:e2e:ui -w packages/frontend
 ```
+
+Playwright timeout defaults:
+- Per test `timeout`: `30000ms`
+- Suite `globalTimeout`: `600000ms` (10 minutes)
+- Web server startup timeout: `60000ms`
+
+Smoke timeout controls:
+- `SMOKE_HTTP_TIMEOUT_MS` (default `10000`) — per-request timeout in `npm run smoke:http`
+- `SMOKE_E2E_TIMEOUT_MS` (default `300000`) — overall timeout guard for `npm run smoke:e2e`
 
 ## Deployment
 

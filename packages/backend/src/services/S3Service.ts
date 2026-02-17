@@ -1,5 +1,17 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+export interface S3ObjectInfo {
+  key: string;
+  size: number;
+  lastModified: Date | null;
+}
 
 export class S3Service {
   private client: S3Client;
@@ -44,6 +56,25 @@ export class S3Service {
       Bucket: this.bucket,
       Key: key
     }));
+  }
+
+  async listFiles(prefix: string): Promise<S3ObjectInfo[]> {
+    const response = await this.client.send(new ListObjectsV2Command({
+      Bucket: this.bucket,
+      Prefix: prefix,
+    }));
+
+    return (response.Contents || [])
+      .filter((item): item is NonNullable<typeof item> => Boolean(item?.Key))
+      .map((item) => ({
+        key: item.Key as string,
+        size: item.Size || 0,
+        lastModified: item.LastModified || null,
+      }));
+  }
+
+  getBucketName(): string {
+    return this.bucket;
   }
 
   extractKeyFromUrl(url: string): string | null {

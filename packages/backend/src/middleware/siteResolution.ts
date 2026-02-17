@@ -8,10 +8,14 @@ import type { CacheService } from '../services/CacheService.js';
  */
 export function createSiteResolutionMiddleware(cacheService: CacheService) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const pathname = request.url.split('?')[0];
+
     // Skip for health check and admin API routes
-    if (request.url.startsWith('/health') || 
-        request.url.startsWith('/api/') ||
-        request.url.startsWith('/metrics')) {
+    if (pathname.startsWith('/health') || 
+        pathname.startsWith('/api/') ||
+        pathname.startsWith('/metrics') ||
+        pathname === '/documentation' ||
+        pathname.startsWith('/documentation/')) {
       return;
     }
 

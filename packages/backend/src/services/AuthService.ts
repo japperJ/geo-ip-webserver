@@ -19,6 +19,12 @@ export interface CreateUserInput {
   global_role?: 'super_admin' | 'user';
 }
 
+export interface UserListItem {
+  id: string;
+  email: string;
+  global_role: 'super_admin' | 'user';
+}
+
 export interface LoginResult {
   user: Omit<User, 'password_hash'>;
   accessToken: string;
@@ -34,7 +40,12 @@ export interface UserSiteRole {
 }
 
 export class AuthService {
-  constructor(private fastify: FastifyInstance) {}
+  private jwtExpiration: string;
+
+  constructor(private fastify: FastifyInstance) {
+    // Use JWT_EXPIRATION from env or default to 15m
+    this.jwtExpiration = process.env.JWT_EXPIRATION || '15m';
+  }
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -100,7 +111,7 @@ export class AuthService {
       sites[row.site_id] = row.role;
     }
 
-    // Generate access token (15min)
+    // Generate access token
     const accessToken = this.fastify.jwt.sign(
       {
         userId: user.id,
@@ -108,7 +119,7 @@ export class AuthService {
         role: user.global_role,
         sites,
       },
-      { expiresIn: '15m' }
+      { expiresIn: this.jwtExpiration }
     );
 
     // Create refresh token (7 days)
@@ -122,7 +133,14 @@ export class AuthService {
       [user.id, expiresAt]
     );
 
-    const { password_hash, ...userWithoutPassword } = user;
+    const userWithoutPassword: Omit<User, 'password_hash'> = {
+      id: user.id,
+      email: user.email,
+      global_role: user.global_role,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      deleted_at: user.deleted_at,
+    };
 
     return {
       user: userWithoutPassword,
@@ -189,7 +207,7 @@ export class AuthService {
         role: user.global_role,
         sites,
       },
-      { expiresIn: '15m' }
+      { expiresIn: this.jwtExpiration }
     );
 
     return accessToken;
@@ -208,7 +226,14 @@ export class AuthService {
       [userId]
     );
 
-    return result.rows[0] || null;
+    const user = result.rows[0];
+    if (!user) return null;
+
+    // Map global_role to role for frontend compatibility
+    return {
+      ...user,
+      role: user.global_role,
+    } as any;
   }
 
   async grantSiteRole(
@@ -252,5 +277,55 @@ export class AuthService {
     );
 
     return result.rows[0]?.role || null;
+  }
+
+  async listUsers(query?: string): Promise<UserListItem[]> {
+    const hasQuery = Boolean(query?.trim());
+
+    const result = hasQuery
+      ? await this.fastify.pg.query<UserListItem>(
+          `SELECT id, email, global_role
+           FROM users
+           WHERE deleted_at IS NULL
+             AND email ILIKE $1
+           ORDER BY email ASC
+           LIMIT 50`,
+          [`%${query?.trim()}%`]
+        )
+      : await this.fastify.pg.query<UserListItem>(
+          `SELECT id, email, global_role
+           FROM users
+           WHERE deleted_at IS NULL
+           ORDER BY email ASC
+           LIMIT 50`
+        );
+
+    return result.rows;
+  }
+
+  async updateUserGlobalRole(
+    userId: string,
+    globalRole: 'super_admin' | 'user'
+  ): Promise<UserListItem | null> {
+    const result = await this.fastify.pg.query<UserListItem>(
+      `UPDATE users
+       SET global_role = $2, updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id, email, global_role`,
+      [userId, globalRole]
+    );
+
+    return result.rows[0] || null;
+  }
+
+  async softDeleteUser(userId: string): Promise<boolean> {
+    const result = await this.fastify.pg.query(
+      `UPDATE users
+       SET deleted_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+
+    return result.rowCount > 0;
   }
 }
