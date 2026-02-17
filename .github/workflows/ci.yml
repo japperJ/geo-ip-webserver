@@ -157,8 +157,14 @@ jobs:
 
       - name: Enforce Redis noeviction policy
         run: |
-          redis-cli -h localhost -p 6379 CONFIG SET maxmemory-policy noeviction
-          redis-cli -h localhost -p 6379 CONFIG GET maxmemory-policy
+          REDIS_CONTAINER_ID="${{ job.services.redis.id }}"
+          docker exec "$REDIS_CONTAINER_ID" redis-cli CONFIG SET maxmemory-policy noeviction
+          POLICY="$(docker exec "$REDIS_CONTAINER_ID" redis-cli --raw CONFIG GET maxmemory-policy | tail -n 1)"
+          echo "Redis maxmemory-policy=$POLICY"
+          if [ "$POLICY" != "noeviction" ]; then
+            echo "Failed to enforce maxmemory-policy=noeviction"
+            exit 1
+          fi
 
       - name: Run screenshot integration test
         run: npm run test:integration:screenshot -w packages/backend
@@ -260,7 +266,7 @@ jobs:
         run: npm ci
       
       - name: Type check backend
-        run: npx tsc --noEmit -w packages/backend
+        run: npx tsc --noEmit -p packages/backend/tsconfig.json
       
       - name: Type check frontend
-        run: npx tsc --noEmit -w packages/frontend
+        run: npx tsc --noEmit -p packages/frontend/tsconfig.json

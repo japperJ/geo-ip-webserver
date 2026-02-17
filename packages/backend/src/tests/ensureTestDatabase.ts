@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { resolveTestDatabaseConfig } from './testDatabaseConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,13 +10,7 @@ const __dirname = path.dirname(__filename);
 /**
  * Test database configuration
  */
-const testDbConfig = {
-  host: process.env.TEST_DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.TEST_DATABASE_PORT || '5434'),
-  database: process.env.TEST_DATABASE_NAME || 'geo_ip_webserver_test',
-  user: process.env.TEST_DATABASE_USER || 'dev_user',
-  password: process.env.TEST_DATABASE_PASSWORD || 'dev_password',
-};
+const testDbConfig = resolveTestDatabaseConfig();
 
 /**
  * Connect to the default 'postgres' database to create test database
