@@ -70,7 +70,12 @@ Open each hostname in browser:
 - `http://site-a.localtest:8080`
 - `http://site-b.localtest:8080`
 
-You should reach the same frontend app origin path, but backend hostname-dependent behavior can now be tested correctly using those hostnames.
+You should reach the same frontend app origin path.
+
+> Important: `:8080` is the **admin dashboard UI**, so being prompted to log in is expected.
+> Hostname mapping works here, but this path is still an authenticated admin app.
+
+If you want to test **anonymous visitor behavior**, use non-admin routes/endpoints (see sections B and C).
 
 ## B) Backend hostname resolution check
 
@@ -89,6 +94,18 @@ From dashboard at `:8080`:
 - Edit site access policy (allow/deny lists, country lists, VPN blocking, geofence).
 - Use **Access Logs** page to confirm decisions and reasons.
 
+## D) Anonymous visitor checks (no dashboard login)
+
+Use one of these patterns:
+
+- Non-API backend probe:
+  - `http://site-a.localtest:3001/test-protected`
+- Public content route (if you uploaded a file for that site):
+  - `http://site-a.localtest:3001/s/<siteId>/content/<filename>`
+
+Expected:
+- Requests are allowed/blocked by site policy (`access_mode`, IP/country/VPN/geofence), not by end-user dashboard login.
+
 ## 6) Fast troubleshooting
 
 ### "No site configured for hostname"
@@ -102,6 +119,16 @@ From dashboard at `:8080`:
 - Host file not loaded by OS.
 - Browser still caching DNS result.
 - Try incognito and verify with ping/nslookup.
+
+### "I open `http://<host>:8080` and get prompted"
+
+- This is expected: `:8080` serves the admin dashboard, which requires login.
+- To validate anonymous site policy behavior, test via `:3001/test-protected` or public `/s/<siteId>/content/<filename>` route.
+
+### Hostname typo mismatch (example: `hest` vs `test`)
+
+- Host file value and Site `hostname` must match exactly.
+- Example: if site is `test.host.local`, opening `test.hest.local` will not resolve to that site.
 
 ### 403 when testing site config changes
 

@@ -15,20 +15,39 @@ export interface S3ObjectInfo {
 
 export class S3Service {
   private client: S3Client;
+  private presignClient: S3Client;
   private bucket: string;
 
   constructor() {
     this.bucket = process.env.AWS_S3_BUCKET || 'screenshots';
+    const endpoint = process.env.AWS_S3_ENDPOINT;
+    const publicEndpoint = process.env.AWS_S3_PUBLIC_ENDPOINT;
+    const region = process.env.AWS_S3_REGION || 'us-east-1';
+    const accessKeyId = process.env.AWS_S3_ACCESS_KEY_ID || '';
+    const secretAccessKey = process.env.AWS_S3_SECRET_ACCESS_KEY || '';
+    const forcePathStyle = process.env.AWS_S3_FORCE_PATH_STYLE === 'true';
     
     this.client = new S3Client({
-      endpoint: process.env.AWS_S3_ENDPOINT,
-      region: process.env.AWS_S3_REGION || 'us-east-1',
+      endpoint,
+      region,
       credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY || ''
+        accessKeyId,
+        secretAccessKey,
       },
-      forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE === 'true'
+      forcePathStyle,
     });
+
+    this.presignClient = publicEndpoint
+      ? new S3Client({
+          endpoint: publicEndpoint,
+          region,
+          credentials: {
+            accessKeyId,
+            secretAccessKey,
+          },
+          forcePathStyle,
+        })
+      : this.client;
   }
 
   async uploadFile(key: string, body: Buffer, contentType: string = 'application/octet-stream'): Promise<string> {
@@ -48,7 +67,7 @@ export class S3Service {
       Key: key
     });
 
-    return await getSignedUrl(this.client, command, { expiresIn });
+    return await getSignedUrl(this.presignClient, command, { expiresIn });
   }
 
   async deleteFile(key: string): Promise<void> {
