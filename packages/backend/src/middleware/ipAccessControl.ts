@@ -5,7 +5,6 @@ import { anonymizeIP } from '../utils/anonymizeIP.js';
 import { AccessLogService } from '../services/AccessLogService.js';
 import { Site } from '../models/Site.js';
 import { pool } from '../db/index.js';
-import { accessControlDecisions } from '../plugins/metrics.js';
 
 // Extend FastifyRequest to include site and geoip
 declare module 'fastify' {

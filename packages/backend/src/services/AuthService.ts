@@ -133,7 +133,14 @@ export class AuthService {
       [user.id, expiresAt]
     );
 
-    const { password_hash, ...userWithoutPassword } = user;
+    const userWithoutPassword: Omit<User, 'password_hash'> = {
+      id: user.id,
+      email: user.email,
+      global_role: user.global_role,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      deleted_at: user.deleted_at,
+    };
 
     return {
       user: userWithoutPassword,

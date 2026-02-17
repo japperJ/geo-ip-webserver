@@ -11,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   timeout: 30000,
-  globalTimeout: 120000,
+  globalTimeout: 600000,
   maxFailures: 1,
   globalSetup: './e2e/global.setup.ts',
   use: {

@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { createGDPRService } from '../services/GDPRService.js';
 import { s3Service } from '../services/S3Service.js';
-import { Readable } from 'stream';
 
 export async function gdprRoutes(fastify: FastifyInstance) {
   const gdprService = createGDPRService(fastify);
@@ -45,7 +44,7 @@ export async function gdprRoutes(fastify: FastifyInstance) {
 
   // Record consent (PUBLIC endpoint - visitors must consent before authentication)
   // Uses sessionId as primary identifier, userId is optional for authenticated users
-  fastify.post('/api/gdpr/consent', async (request, reply) => {
+  fastify.post('/api/gdpr/consent', async (request, _reply) => {
     const { consentType, granted, sessionId } = request.body as {
       consentType: 'gps' | 'cookies' | 'analytics';
       granted: boolean;
@@ -69,7 +68,7 @@ export async function gdprRoutes(fastify: FastifyInstance) {
   });
 
   // Check consent status
-  fastify.get('/api/gdpr/consent/:sessionId/:type', async (request, reply) => {
+  fastify.get('/api/gdpr/consent/:sessionId/:type', async (request, _reply) => {
     const { sessionId, type } = request.params as { sessionId: string; type: string };
     
     const hasConsent = await gdprService.hasConsent(
@@ -100,7 +99,7 @@ export async function gdprRoutes(fastify: FastifyInstance) {
   // Delete user account and data (GDPR Article 17 - Right to Erasure)
   fastify.delete('/api/user/data', {
     preHandler: [fastify.authenticate]
-  }, async (request, reply) => {
+  }, async (request, _reply) => {
     const userId = (request.user as any).id;
 
     await gdprService.deleteUserData(userId);
@@ -121,7 +120,7 @@ export async function gdprRoutes(fastify: FastifyInstance) {
   }, handleArtifactPresign);
 
   // Privacy policy endpoint
-  fastify.get('/api/privacy-policy', async (request, reply) => {
+  fastify.get('/api/privacy-policy', async (_request, _reply) => {
     return {
       lastUpdated: '2026-02-14',
       sections: [

@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "authToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTI0NzAxMCwiZXhwIjoxNzcxMjUwNjEwfQ.Hsy-3y1DO4MSeTQecS0pabvj_BRu8kzi3a5FURa5d6o",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTM1MjcwMCwiZXhwIjoxNzcxMzU2MzAwfQ.8ti3oUcckvlHCoWXjD63zF30yC89qKeiGkn3VhSP-z8",
       "domain": "localhost",
       "path": "/",
-      "expires": 1771333410,
+      "expires": 1771439100,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -17,11 +17,7 @@
       "localStorage": [
         {
           "name": "authToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTI0NzAxMCwiZXhwIjoxNzcxMjUwNjEwfQ.Hsy-3y1DO4MSeTQecS0pabvj_BRu8kzi3a5FURa5d6o"
-        },
-        {
-          "name": "user",
-          "value": "{\"id\":\"9501d76e-9e90-4109-8b75-362d61f224fd\",\"email\":\"admin@test.local\",\"global_role\":\"super_admin\",\"created_at\":\"2026-02-14T16:19:42.069Z\",\"updated_at\":\"2026-02-14T16:19:42.069Z\",\"deleted_at\":null,\"role\":\"super_admin\"}"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTAxZDc2ZS05ZTkwLTQxMDktOGI3NS0zNjJkNjFmMjI0ZmQiLCJlbWFpbCI6ImFkbWluQHRlc3QubG9jYWwiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJzaXRlcyI6e30sImlhdCI6MTc3MTM1MjcwMCwiZXhwIjoxNzcxMzU2MzAwfQ.8ti3oUcckvlHCoWXjD63zF30yC89qKeiGkn3VhSP-z8"
         }
       ]
     }

@@ -76,6 +76,6 @@ function getRedisConnection(): { host: string; port: number; username?: string; 
   };
 }
 
-export function createScreenshotService(fastify: FastifyInstance): ScreenshotService {
+export function createScreenshotService(_fastify: FastifyInstance): ScreenshotService {
   return new ScreenshotService(getRedisConnection());
 }

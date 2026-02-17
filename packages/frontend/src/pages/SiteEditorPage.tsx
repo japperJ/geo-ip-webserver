@@ -172,7 +172,6 @@ export function SiteEditorPage() {
     };
 
     if (isEditMode) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { slug, ...updatePayload } = payload;
       await updateMutation.mutateAsync(updatePayload);
     } else {

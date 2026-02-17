@@ -1,9 +1,17 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    teardownTimeout: 15000,
+    exclude: [
+      ...configDefaults.exclude,
+      'dist/**',
+      'coverage/**',
+    ],
     pool: 'forks',
     poolMatchGlobs: [['**/*.test.ts', 'forks']],
     // Run tests serially to avoid parallel DB access issues

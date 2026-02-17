@@ -3,7 +3,7 @@ import { test as setup, expect } from '@playwright/test';
 const authFile = 'playwright/.auth/user.json';
 
 setup('authenticate as super admin', async ({ page, request }) => {
-  const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
   
   // Register first user (becomes super_admin automatically)
   const registerResponse = await request.post(`${baseURL}/api/auth/register`, {

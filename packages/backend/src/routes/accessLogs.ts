@@ -103,7 +103,7 @@ export async function accessLogRoutes(fastify: FastifyInstance, options: AccessL
     schema: {
       querystring: accessLogsQuerySchema,
     },
-  }, async (request, reply) => {
+  }, async (request, _reply) => {
     const result = await accessLogService.query(request.query);
     
     // Transform to match frontend expectations
@@ -133,7 +133,9 @@ export async function accessLogRoutes(fastify: FastifyInstance, options: AccessL
     let page = 1;
     const limit = 1000;
 
-    while (true) {
+    let hasMore = true;
+
+    while (hasMore) {
       const result = await accessLogService.query({
         site_id: siteId,
         allowed,
@@ -146,11 +148,10 @@ export async function accessLogRoutes(fastify: FastifyInstance, options: AccessL
 
       logs.push(...result.logs);
 
-      if (logs.length >= result.total || result.logs.length === 0) {
-        break;
+      hasMore = logs.length < result.total && result.logs.length > 0;
+      if (hasMore) {
+        page += 1;
       }
-
-      page += 1;
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

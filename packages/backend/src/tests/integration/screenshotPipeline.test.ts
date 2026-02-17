@@ -56,6 +56,35 @@ type S3Config = {
   forcePathStyle: boolean;
 };
 
+const REQUIRED_S3_ENV_VARS = [
+  'AWS_S3_ENDPOINT',
+  'AWS_S3_ACCESS_KEY_ID',
+  'AWS_S3_SECRET_ACCESS_KEY',
+  'AWS_S3_BUCKET',
+] as const;
+
+const missingS3EnvVars = REQUIRED_S3_ENV_VARS.filter((name) => {
+  const value = process.env[name];
+  return !value || value.trim() === '';
+});
+
+const enforceS3EnvContract = process.env.REQUIRE_SCREENSHOT_INTEGRATION_ENV === 'true';
+const hasRequiredS3Config = missingS3EnvVars.length === 0;
+
+if (!hasRequiredS3Config) {
+  const message =
+    `[screenshot pipeline integration] missing required S3 env (${missingS3EnvVars.join(', ')}). ` +
+    'See packages/backend/TESTING.md for required variables and a local MinIO recipe.';
+
+  if (enforceS3EnvContract) {
+    throw new Error(
+      `${message} REQUIRE_SCREENSHOT_INTEGRATION_ENV=true is set, so the integration gate must fail-fast.`
+    );
+  }
+
+  console.warn(`[vitest] ${message} This suite will be skipped.`);
+}
+
 function getRequiredS3Config(): S3Config {
   const endpoint = process.env.AWS_S3_ENDPOINT;
   const accessKeyId = process.env.AWS_S3_ACCESS_KEY_ID;
@@ -107,22 +136,32 @@ async function waitFor<T>(
   throw new Error(errorMessage);
 }
 
-describe('screenshot pipeline integration', () => {
+async function getRedisMaxmemoryPolicy(queue: Queue): Promise<string> {
+  const redisClient = await queue.client;
+  const configResult = await redisClient.config('GET', 'maxmemory-policy');
+
+  if (Array.isArray(configResult)) {
+    for (let i = 0; i < configResult.length - 1; i += 2) {
+      if (configResult[i] === 'maxmemory-policy') {
+        return configResult[i + 1] as string;
+      }
+    }
+  }
+
+  throw new Error(
+    `Unable to determine Redis maxmemory-policy from CONFIG GET response: ${JSON.stringify(configResult)}`
+  );
+}
+
+const describeScreenshotIntegration = hasRequiredS3Config ? describe : describe.skip;
+
+describeScreenshotIntegration('screenshot pipeline integration', () => {
   const siteService = new SiteService(testPool);
   const accessLogService = new AccessLogService(testPool);
   const screenshotService = new ScreenshotService(getRedisConnection());
   const redisConnection = getRedisConnection();
-  const s3Config = getRequiredS3Config();
-
-  const s3Client = new S3Client({
-    endpoint: s3Config.endpoint,
-    region: s3Config.region,
-    credentials: {
-      accessKeyId: s3Config.accessKeyId,
-      secretAccessKey: s3Config.secretAccessKey,
-    },
-    forcePathStyle: s3Config.forcePathStyle,
-  });
+  let s3Config!: S3Config;
+  let s3Client!: S3Client;
 
   let app: Awaited<ReturnType<typeof buildTestServer>>;
   let queue: Queue;
@@ -189,6 +228,17 @@ describe('screenshot pipeline integration', () => {
   }
 
   beforeAll(async () => {
+    s3Config = getRequiredS3Config();
+    s3Client = new S3Client({
+      endpoint: s3Config.endpoint,
+      region: s3Config.region,
+      credentials: {
+        accessKeyId: s3Config.accessKeyId,
+        secretAccessKey: s3Config.secretAccessKey,
+      },
+      forcePathStyle: s3Config.forcePathStyle,
+    });
+
     accessLogService.setSyncMode(true);
     accessLogService.setScreenshotService(screenshotService);
     setIpAccessControlAccessLogService(accessLogService);
@@ -228,6 +278,9 @@ describe('screenshot pipeline integration', () => {
   });
 
   it('proves blocked request -> enqueue -> worker upload/linkage -> artifacts fetch', async () => {
+    const maxmemoryPolicy = await getRedisMaxmemoryPolicy(queue);
+    expect(maxmemoryPolicy).toBe('noeviction');
+
     const blockedResponse = await app.inject({
       method: 'GET',
       url: '/protected',
