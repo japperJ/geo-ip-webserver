@@ -287,3 +287,44 @@ Useful overrides:
 - `SMOKE_GEOFENCE_CENTER_LAT`, `SMOKE_GEOFENCE_CENTER_LNG`, `SMOKE_GEOFENCE_RADIUS_KM`
 - `SMOKE_GEOFENCE_INSIDE_LAT`, `SMOKE_GEOFENCE_INSIDE_LNG`
 - `SMOKE_GEOFENCE_OUTSIDE_LAT`, `SMOKE_GEOFENCE_OUTSIDE_LNG`
+
+### G) Real browser/mobile geofence test (no manual curl headers)
+
+Important behavior:
+- Browsers do **not** send GPS coordinates by default in normal requests.
+- Your app must call `navigator.geolocation` and then send coordinates to backend.
+- Geolocation API typically requires a **secure context**:
+  - works on `https://...`
+  - works on `http://localhost`
+  - usually blocked on plain `http://*.localtest`
+
+Recommended local validation flow:
+
+1) Use automated backend geofence check first:
+- `npm run smoke:geofence`
+
+2) Validate browser geolocation permission on desktop/mobile:
+- Open a page served from `http://localhost:8080` (or HTTPS host)
+- In browser devtools console, run:
+
+```javascript
+navigator.geolocation.getCurrentPosition(
+  (pos) => console.log('GPS OK', pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+  (err) => console.error('GPS ERROR', err.code, err.message),
+  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+);
+```
+
+3) If GPS is available, call protected content route with coordinates:
+- Send `x-gps-lat`, `x-gps-lng`, and optional `x-gps-accuracy` headers.
+- Expected:
+  - inside geofence => `302`
+  - outside geofence => `403` with `reason: "outside_geofence"`
+
+4) Mobile browser note:
+- Mobile often gives better accuracy than desktop, but permission is still required.
+- On mobile, ensure location services are enabled and browser site permission is set to Allow.
+
+If browser GPS is blocked in local hostname mode:
+- test using `localhost` origin for geolocation permission checks,
+- or run local HTTPS for your hostname before browser-driven geofence validation.
